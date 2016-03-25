@@ -9,4 +9,7 @@ public class Configuration {
 	public static final int CALLBACK_PORT = 8991;
 	public static final int DRAGON_COUNT = 20;
 
+	public static final int SERVER_PORT = 20;
+
+
 }

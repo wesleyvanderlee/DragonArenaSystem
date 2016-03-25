@@ -7,6 +7,7 @@ import java.rmi.registry.Registry;
 public class GameClient {
 	GameServerInterface gameServer;
 	Registry register;
+	int id =1234;
 
 	public GameClient(String ID, String HOST, int PORT) {
 		try {
@@ -20,18 +21,17 @@ public class GameClient {
 	public void run() 
 	{
 		try {
-			sendMessage();
+			sendMessage(MessageRequest.addClient);
 			//this.gameServer.play();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 	
-	public void sendMessage() throws RemoteException {
+	public void sendMessage(MessageRequest request) throws RemoteException {
 		Message message = new Message();
-		int id = 1234;
-		message.put("request", MessageRequest.play);
-		message.put("id", id);
+		message.put("request", request);
+		message.put("id", this.id);
 		gameServer.onMessageReceived(message);
 	}
 }
