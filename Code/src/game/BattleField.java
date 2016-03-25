@@ -127,6 +127,16 @@ public class BattleField implements IMessageReceivedHandler {
 
 		return true;
 	}
+	
+	public void setMap (Unit[][] map)
+	{
+		this.map = map;
+	}
+	
+	public Unit[][] getMap ()
+	{
+		return map;
+	}
 
 	/**
 	 * Get a unit from a position.
