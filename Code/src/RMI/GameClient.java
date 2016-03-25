@@ -28,7 +28,7 @@ public class GameClient {
 		}
 	}
 	
-	public void sendMessage(MessageRequest request) throws RemoteException {
+	public void sendMessage(MessageRequest request) throws Exception {
 		Message message = new Message();
 		message.put("request", request);
 		message.put("id", this.id);

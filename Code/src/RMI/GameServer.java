@@ -51,7 +51,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 			try 
 			{
 				firstGameSever = (GameServerInterface) severRegistry.lookup(firstGameSeverID);
-				setBattlefield(firstGameSever.getBattlefield());
+				sendSeverMessage(firstGameSeverID, MessageRequest.getBattlefield);
 			} 
 			catch (Exception e) 
 			{
@@ -110,7 +110,8 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	private void register()
 	{
 		System.setProperty("java.security.policy", "security.policy");
-//	    System.setSecurityManager(new SecurityManager());
+	    System.setSecurityManager(new SecurityManager());
+
 		try 
 		{
 			if(ID.charAt(ID.length()-1) == '1')
@@ -187,9 +188,9 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		return this.battlefield;
 	}
 	
-	public void onMessageReceived(Message msg) throws RemoteException {
+	public void onMessageReceived(Message msg) throws Exception {
 		Message reply = null;
-		String origin = (String)msg.get("origin");
+		String origin = (String)msg.get("id");
 		MessageRequest request = (MessageRequest)msg.get("request");
 		
 		switch(request)
@@ -201,10 +202,11 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 				addClient();
 				break;
 			case updateBattlefield:
-				battlefield = (BattleField) msg.get("battlefiled");
+				battlefield = (BattleField) msg.get("battlefieldMap");
 				break;
 			case getBattlefield:
-				battlefield = (BattleField) msg.get("battlefiled");
+				System.out.println(ID);
+				sendBattlefield(origin, MessageRequest.updateBattlefield);
 				break;
 		default:
 			System.out.println("No message type found");
@@ -212,11 +214,25 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		}
 	}
 	
-	private void sendSeverMessage(String ID, MessageRequest request) throws Exception {
+	private void sendSeverMessage(String ID, MessageRequest request) throws Exception 
+	{
 		Message message = new Message();
 		message.put("request", request);
-		message.put("id", ID);
+		message.put("id", this.ID);
 		GameServerInterface otherSever = (GameServerInterface) severRegistry.lookup(ID);
 		otherSever.onMessageReceived(message);
 	}
+	
+	private void sendBattlefield(String ID, MessageRequest request) throws Exception 
+	{
+		Message message = new Message();
+		message.put("request", request);
+		message.put("id", this.ID);
+		message.put("battlefieldMap", this.battlefield.getMap());
+		System.out.println(ID);
+		GameServerInterface otherSever = (GameServerInterface) severRegistry.lookup(ID);
+		otherSever.onMessageReceived(message);
+	}
+	
+	
 }
