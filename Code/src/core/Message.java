@@ -1,14 +1,14 @@
-package RMI;
+package core;
 
 
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
-import exception.MessageHasAlreadyBeenReceivedException;
-import exception.MessageHasAlreadyBeenSendException;
-import exception.MessageHasNotBeenReceivedException;
-import exception.MessageHasNotBeenSentException;
+import core.exception.MessageHasAlreadyBeenReceivedException;
+import core.exception.MessageHasAlreadyBeenSendException;
+import core.exception.MessageHasNotBeenReceivedException;
+import core.exception.MessageHasNotBeenSentException;
 
 /**
  * A message is the actual data unit, which is 

@@ -7,5 +7,6 @@ public class Configuration {
 	public static final String[] REMOTE_HOSTS = {"localhost", "localhost", "localhost", "localhost", "localhost"};
 	public static final int[] REMOTE_PORTS = {8989,8990,8991,8992,8993};
 	public static final int CALLBACK_PORT = 8991;
+	public static final int DRAGON_COUNT = 20;
 
 }
