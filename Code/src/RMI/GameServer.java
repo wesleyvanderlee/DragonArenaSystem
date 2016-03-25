@@ -110,7 +110,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	private void register()
 	{
 		System.setProperty("java.security.policy", "security.policy");
-	    System.setSecurityManager(new SecurityManager());
+//	    System.setSecurityManager(new SecurityManager());
 		try 
 		{
 			if(ID.charAt(ID.length()-1) == '1')
