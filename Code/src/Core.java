@@ -6,6 +6,7 @@ public class Core {
 
 	public static void main(String[] args) throws Exception {
 
+	    
 		for(int i=0; i< 5; i++){
 			GameServer gameServerImplmenetation = new GameServer(Configuration.REMOTE_IDS[i], Configuration.REMOTE_HOSTS[i],
 				Configuration.REMOTE_PORTS[i], Configuration.CALLBACK_PORT);
