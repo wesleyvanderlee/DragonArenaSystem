@@ -1,7 +1,5 @@
 package RMI;
 import java.rmi.AlreadyBoundException;
-import java.rmi.Naming;
-import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -37,6 +35,22 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	public void play() throws RemoteException {
 		System.out.println("Play Dragon Arena System");
 		
+	}
+	
+	public void onMessageReceived(Message msg) throws RemoteException {
+		Message reply = null;
+		String origin = (String)msg.get("origin");
+		MessageRequest request = (MessageRequest)msg.get("request");
+		
+		switch(request)
+		{
+			case play:
+				play();
+				break;
+			case test2:
+				System.out.println("test2");
+				break;
+		}
 	}
 
 	
