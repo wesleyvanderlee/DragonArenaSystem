@@ -98,8 +98,8 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	}
 
 	private void register() {
-		System.setProperty("java.security.policy", "security.policy");
-		System.setSecurityManager(new SecurityManager());
+//		System.setProperty("java.security.policy", "security.policy");
+//		System.setSecurityManager(new SecurityManager());
 		try {
 			System.out.println("A");
 			severRegistry = LocateRegistry.createRegistry(SERVER_REGISTRY_PORT);
