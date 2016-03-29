@@ -44,7 +44,7 @@ public class Dragon extends Unit implements Runnable, Serializable {
 		/* Spawn the dragon with a random number of hitpoints between
 		 * 50..100 and 5..20 attackpoints. */
 		super((int)(Math.random() * (MAX_HITPOINTS - MIN_HITPOINTS) + MIN_HITPOINTS), (int)(Math.random() * (MAX_ATTACKPOINTS - MIN_ATTACKPOINTS) + MIN_ATTACKPOINTS));
-
+		
 		/* Create a random delay */
 		timeBetweenTurns = (int)(Math.random() * (MAX_TIME_BETWEEN_TURNS - MIN_TIME_BETWEEN_TURNS)) + MIN_TIME_BETWEEN_TURNS;
 
@@ -53,6 +53,7 @@ public class Dragon extends Unit implements Runnable, Serializable {
 			return; // We could not spawn on the battlefield
 		}
 		/* Awaken the dragon */
+		
 		runnerThread = new Thread(this);
 		runnerThread.start();
 	}
@@ -68,6 +69,7 @@ public class Dragon extends Unit implements Runnable, Serializable {
 	@SuppressWarnings("static-access")
 	public void run() 
 	{
+		System.out.println("Dragon thread running");
 		ArrayList <Direction> adjacentPlayers = new ArrayList<Direction> ();
 		
 		this.running = true;
@@ -100,7 +102,7 @@ public class Dragon extends Unit implements Runnable, Serializable {
 				// Pick a random player to attack
 				if (adjacentPlayers.size() == 0)
 					continue; // There are no players to attack
-				Direction playerToAttack = adjacentPlayers.get( (int)(Math.random() * adjacentPlayers.size()) );
+				Direction playerToAttack = adjacentPlayers.get( 0 );
 				
 				// Attack the player
 				switch (playerToAttack) {

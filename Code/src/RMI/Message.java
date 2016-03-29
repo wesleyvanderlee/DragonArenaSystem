@@ -31,6 +31,15 @@ public class Message implements Serializable
 	private static final String ID_REQUESTTYPE = "*REQUESTTYPE";
 
 
+	public String toString(){
+		String res ="Message:[";
+		for(String key : dataElements.keySet()){
+			res += "("+key + ", " + dataElements.get(key)+")";
+		}
+		res += "]";
+		return res;
+	}
+	
 	/**
 	 * Construct a message, assign a unique message
 	 * ID (according to the current JVM) and assign

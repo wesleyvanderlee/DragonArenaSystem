@@ -1,18 +1,18 @@
 package RMI;
 
 import java.io.IOException;
-import java.rmi.AccessException;
-import java.rmi.AlreadyBoundException;
-import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
+import java.util.concurrent.locks.ReentrantLock;
 
 import game.BattleField;
 import presentation.BattleFieldViewer;
-import units.*;
+import units.Coordinate;
+import units.Dragon;
+import units.Unit;
 
 public class GameServer extends UnicastRemoteObject implements GameServerInterface, Runnable {
 	/**
@@ -21,163 +21,181 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	private static final long serialVersionUID = 1L;
 	String ID;
 	String HOST;
-	int PORT;
-	int CALLBACK_PORT;
 	int SERVER_REGISTRY_PORT;
 	Registry severRegistry;
 	BattleField battlefield;
 	ArrayList<GameServerInterface> gameServers;
 	Thread runnerThread;
 	ArrayList<String> gameClients;
+	int initTime;
+	GameServerInterface oldestGameServer;
+	private ReentrantLock lock = new ReentrantLock();
 
-	public GameServer(String ID, String HOST, int PORT, int SERVER_REGISTRY_PORT, int CALLBACK_PORT)
-			throws IOException {
+	public GameServer(String serverID, String SERVER_HOST, int SERVER_REGISTRY_PORT) throws IOException {
 		super();
 		this.gameClients = new ArrayList<String>();
-		this.ID = ID;
-		this.HOST = HOST;
-		this.PORT = PORT;
-		this.CALLBACK_PORT = CALLBACK_PORT;
+		this.ID = serverID;
+		this.HOST = SERVER_HOST;
 		this.SERVER_REGISTRY_PORT = SERVER_REGISTRY_PORT;
 		this.register();
-		// this.makeBattleField();
+		System.out.println(serverID);
+		this.battlefield = BattleField.getBattleField(serverID+"_BattleField");
+		oldestGameServer = this;
+		lock.lock(); // blocks until current thread gets the lock
+		try {
+			sync();
+
+		} finally {
+			lock.unlock();
+		}
 
 		this.runnerThread = new Thread(this);
 		this.runnerThread.start();
+
 	}
 
-	private void makeBattleField() throws IOException {
-		if (ID.charAt(ID.length() - 1) == '1') {
-			battlefield = BattleField.getBattleField();
-			makeDragons();
-		} else {
-			String firstGameSeverID = ID.substring(0, ID.length() - 1) + 1;
-			GameServerInterface firstGameSever;
-			try {
-				firstGameSever = (GameServerInterface) severRegistry.lookup(firstGameSeverID);
-				sendSeverMessage(firstGameSeverID, MessageRequest.getBattlefield);
-			} catch (Exception e) {
-				e.printStackTrace();
+	public String getID() {
+		return this.ID;
+	}
+
+	public synchronized void sync() {
+		if (!this.ID.equals(Configuration.SERVER_IDS[0]))
+			return;
+		int covered = 0;
+		while (covered < Configuration.SERVER_IDS.length) {
+			for (int i = 0; i < Configuration.SERVER_IDS.length; i++) {
+				if (covered >= Configuration.SERVER_IDS.length)
+					break;
+				try {
+					Registry otherRegistry = LocateRegistry.getRegistry(Configuration.SERVER_HOSTS[i],
+							Configuration.SERVER_REGISTRY_PORTS[i]);
+					GameServerInterface otherServer = (GameServerInterface) otherRegistry
+							.lookup(Configuration.SERVER_IDS[i]);
+					otherServer.initMe(this);
+					covered++;
+				} catch (Exception e) {
+				}
 			}
 		}
+	}
+
+	public void initMe(GameServerInterface gs) throws RemoteException {
+		this.oldestGameServer = gs;
+//		System.out.println(this.getID() + " believes " + oldestGameServer.getID() + " is oldest ");
+		this.makeDragons();
 	}
 
 	private void makeDragons() {
-		/* All the dragons connect */
-		for (int i = 0; i < Configuration.DRAGON_COUNT; i++) {
-			/* Try picking a random spot */
-			int x, y, attempt = 0;
-			do {
-				x = (int) (Math.random() * BattleField.MAP_WIDTH);
-				y = (int) (Math.random() * BattleField.MAP_HEIGHT);
-				attempt++;
-			} while (battlefield.getUnit(x, y) != null && attempt < 10);
+		try {
+			if (oldestGameServer.getID().equals(this.getID())) {
+				System.out.println("Dragons created by " + this.getID());
+				/* All the dragons connect */
+				ArrayList<Coordinate> coords = new ArrayList<Coordinate>();
+				for (int i = 0; i < Configuration.DRAGON_COUNT; i++) {
+					/* Try picking a random spot */
+					int x, y, attempt = 0;
+					do {
+						x = (int) (Math.random() * BattleField.MAP_WIDTH);
+						y = (int) (Math.random() * BattleField.MAP_HEIGHT);
+						attempt++;
+					} while (battlefield.getUnit(x, y) != null && attempt < 10);
 
-			// If we didn't find an empty spot, we won't add a new dragon
-			if (battlefield.getUnit(x, y) != null) {
-				break;
+					// If we didn't find an empty spot, we won't add a new
+					// dragon
+					if (battlefield.getUnit(x, y) != null) {
+						break;
+					}
+
+					final int finalX = x;
+					final int finalY = y;
+					Message message = new Message();
+					message.put("request", MessageRequest.addDragon);
+					message.put("ID", this.ID);
+					message.put("x", finalX);
+					message.put("y", finalY);
+					serverBroadCast(message);
+					/*
+					 * Create the new dragon in a separate thread, making sure
+					 * it does not block the system.
+					 */
+
+				}
+				// Communicate dragon coordinates with all other servers
+
+				
 			}
+		} catch (RemoteException e) {
+			e.printStackTrace();
+		}
 
-			final int finalX = x;
-			final int finalY = y;
+	}
+	
+	public void serverBroadCast(Message message){
+		for (int i = 0; i < Configuration.SERVER_IDS.length; i++) {
+			try {
+				Registry otherRegistry = LocateRegistry.getRegistry(Configuration.SERVER_HOSTS[i],
+						Configuration.SERVER_REGISTRY_PORTS[i]);
+				GameServerInterface otherServer = (GameServerInterface) otherRegistry
+						.lookup(Configuration.SERVER_IDS[i]);
+				otherServer.onMessageReceived(message);
+				
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	}
 
-			/*
-			 * Create the new dragon in a separate thread, making sure it does
-			 * not block the system.
-			 */
-			new Thread(new Runnable() {
+	public void initDragon(int x, int y) {
+//		System.out.println(this.getID());
+//		for (Coordinate coord : coords) {
+		String id = this.getID();
+		Thread t = new Thread(new Runnable() {
 				public void run() {
 					try {
-						new Dragon(finalX, finalY);
+						System.out.println(id + " added a dragon at: (" + x + "," + y + ")");
+						new Dragon(x, y);
+						System.out.println("--"+id);
+						
 					} catch (IOException e) {
+						System.err.println("wtf");
 						e.printStackTrace();
 					}
 				}
-			}).start();
-		}
+			});
+		t.start();
+
+//		}
+		// new Thread(new Runnable()
+		// {
+		// public void run()
+		// {
+		// new BattleFieldViewer();
+		// }
+		// }).start();
 	}
 
 	private void register() {
-//		System.setProperty("java.security.policy", "security.policy");
-//		System.setSecurityManager(new SecurityManager());
 		try {
-			System.out.println("A");
 			severRegistry = LocateRegistry.createRegistry(SERVER_REGISTRY_PORT);
-		} catch (Exception e)
-		{
+		} catch (Exception e) {
 			try {
-				System.out.println("B");
 				severRegistry = LocateRegistry.getRegistry(SERVER_REGISTRY_PORT);
 			} catch (RemoteException e1) {
-				System.out.println("C");
 				e1.printStackTrace();
 			}
-		} finally{
+		} finally {
 			try {
-				System.out.println("D");
 				severRegistry.bind(this.ID, this);
 			} catch (Exception e) {
-				System.out.println("E");
 				e.printStackTrace();
-			} 
+			}
 		}
-
-	}
-
-	@Override
-	public void play() throws RemoteException {
-		System.out.println("Play Dragon Arena System");
 
 	}
 
 	public boolean addClient(String clientID) {
 		this.gameClients.add(clientID);
 		return true;
-	}
-
-	public void addClient(int origin) {
-
-		// System.out.println("Server " + this.ID + " talked with " + origin);
-		String clientId = origin + "";
-		this.gameClients.add(clientId);
-
-		/* Initialize a client */
-		// int x, y, attempt = 0;
-		// do
-		// {
-		// x = (int)(Math.random() * BattleField.MAP_WIDTH);
-		// y = (int)(Math.random() * BattleField.MAP_HEIGHT);
-		// attempt++;
-		// }
-		// while (battlefield.getUnit(x, y) != null && attempt < 10);
-		//
-		// // If we didn't find an empty spot, we won't add a new player
-		// if (battlefield.getUnit(x, y) != null)
-		// {
-		// System.out.println("No room on the battlefield");
-		// }
-		//
-		// final int finalX = x;
-		// final int finalY = y;
-		//
-		// /* Create the new player in a separate
-		// * thread, making sure it does not
-		// * block the system.
-		// */
-		// new Thread(new Runnable()
-		// {
-		// public void run()
-		// {
-		// try
-		// {
-		// new Player(finalX, finalY);
-		// }
-		// catch (IOException e)
-		// {
-		// e.printStackTrace();
-		// }
-		// }
-		// }).start();
 	}
 
 	public void setBattlefield(BattleField battlefield) {
@@ -189,22 +207,16 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	}
 
 	public void onMessageReceived(Message msg) throws Exception {
-		Message reply = null;
-		int origin = Integer.parseInt(msg.get("ID") + "");
 		MessageRequest request = (MessageRequest) msg.get("request");
 		switch (request) {
-		case play:
-			play();
-			break;
-		case addClient:
-			addClient(origin);
-			break;
 		case updateBattlefield:
 			updatebfmap(msg.get("battlefieldMap"));
 			break;
+		case addDragon:
+			initDragon((Integer)msg.get("x"),(Integer)msg.get("y"));
+			break;
 		case getBattlefield:
-			System.out.println(ID);
-			sendBattlefield(origin, MessageRequest.updateBattlefield);
+//			sendBattlefield(origin, MessageRequest.updateBattlefield);
 			break;
 		default:
 			System.out.println("No message type found");
@@ -226,7 +238,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	private void sendSeverMessage(String ID, MessageRequest request) throws Exception {
 		Message message = new Message();
 		message.put("request", request);
-		message.put("id", this.ID);
+		message.put("ID", this.ID);
 		GameServerInterface otherSever = (GameServerInterface) severRegistry.lookup(ID);
 		otherSever.onMessageReceived(message);
 	}
@@ -234,7 +246,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	private void sendBattlefield(int ID, MessageRequest request) throws Exception {
 		Message message = new Message();
 		message.put("request", request);
-		message.put("id", this.ID);
+		message.put("ID", this.ID);
 		message.put("battlefieldMap", this.battlefield.getMap());
 		GameServerInterface otherSever = (GameServerInterface) severRegistry.lookup(ID + "");
 		otherSever.onMessageReceived(message);

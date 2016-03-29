@@ -4,7 +4,6 @@ import Log.Logger;
 import RMI.Configuration;
 import RMI.GameClient;
 import RMI.GameServer;
-import units.Dragon;
 
 public class Core {
 
@@ -19,14 +18,14 @@ public class Core {
 				public void run() {
 					try {
 						new GameServer(Configuration.SERVER_IDS[index], Configuration.SERVER_HOSTS[index],
-								Configuration.CLIENT_REGISTRY_PORTS[index], Configuration.SERVER_REGISTRY_PORT, Configuration.CALLBACK_PORT);
+								Configuration.SERVER_REGISTRY_PORTS[index]);
 					} catch (IOException e) {
 						e.printStackTrace();
 
 					}
 				}
 			}).start();
-			Logger.log("New server at " + Configuration.SERVER_HOSTS[i] + ":" + Configuration.CLIENT_REGISTRY_PORTS[i]);
+			Logger.log("New server at " + Configuration.SERVER_HOSTS[i] + ":" + Configuration.SERVER_REGISTRY_PORTS[i]);
 		}
 		for (int i = 0; i < 20; i++) {
 			int clientID = i;
@@ -34,8 +33,8 @@ public class Core {
 			new Thread(new Runnable() {
 				public void run() {
 					try {
-						new GameClient(clientID, Configuration.SERVER_IDS[index], Configuration.SERVER_REGISTRY_PORT,
-								Configuration.SERVER_HOSTS[index], Configuration.CLIENT_REGISTRY_PORTS[index]);
+						new GameClient(clientID, Configuration.SERVER_IDS[index], Configuration.SERVER_HOSTS[index],
+								Configuration.SERVER_REGISTRY_PORTS[index]);
 					} catch (Exception e) {
 						e.printStackTrace();
 

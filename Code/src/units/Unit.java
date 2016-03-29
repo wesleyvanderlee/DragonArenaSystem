@@ -300,7 +300,8 @@ public abstract class Unit implements Serializable, IMessageReceivedHandler {
 		getMessage.put("x", x);
 		getMessage.put("y", y);
 		getMessage.put("id", id);
-
+			
+		System.err.println(BattleField.battlefieldID);
 		// Send the getUnit message
 		clientSocket.sendMessage(getMessage, "localsocket://" + BattleField.battlefieldID);
 

@@ -40,7 +40,7 @@ public class BattleField implements IMessageReceivedHandler {
 	 */
 	private int lastUnitID = 0;
 
-	public final static String battlefieldID = "server";
+	public static String battlefieldID;
 	public final static int MAP_WIDTH = 25;
 	public final static int MAP_HEIGHT = 25;
 	private ArrayList <Unit> units; 
@@ -51,9 +51,9 @@ public class BattleField implements IMessageReceivedHandler {
 	 * @param height of the battlefield
 	 * @throws IOException 
 	 */
-	private BattleField(int width, int height) throws IOException {
+	private BattleField(int width, int height, String ID) throws IOException {
 		Socket local = new LocalSocket();
-		
+		this.battlefieldID = ID;
 		synchronized (this) 
 		{
 			map = new Unit[width][height];
@@ -86,9 +86,13 @@ public class BattleField implements IMessageReceivedHandler {
 	 * @return the battlefield.
 	 * @throws IOException 
 	 */
+	public static BattleField getBattleField(String ID) throws IOException {
+//		if (battlefield == null)
+			battlefield = new BattleField(MAP_WIDTH, MAP_HEIGHT, ID);
+		return battlefield;
+	}
+	
 	public static BattleField getBattleField() throws IOException {
-		if (battlefield == null)
-			battlefield = new BattleField(MAP_WIDTH, MAP_HEIGHT);
 		return battlefield;
 	}
 	
