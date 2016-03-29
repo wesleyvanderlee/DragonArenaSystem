@@ -5,6 +5,7 @@ import game.BattleField;
 
 public interface GameServerInterface extends Remote{
 	public void play() throws java.rmi.RemoteException;
+	public boolean addClient(String clientID) throws java.rmi.RemoteException;
 	public void onMessageReceived(Message msg) throws Exception;
 	public BattleField getBattlefield() throws java.rmi.RemoteException;
 }

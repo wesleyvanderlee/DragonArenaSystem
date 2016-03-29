@@ -64,6 +64,20 @@ public class BattleField implements IMessageReceivedHandler {
 		}
 		
 	}
+	
+	private BattleField(Unit[][] map) throws IOException {
+		Socket local = new LocalSocket();
+		
+		synchronized (this) 
+		{
+			map = map;
+			local.register(BattleField.battlefieldID);
+			serverSocket = new SynchronizedSocket(local);
+			serverSocket.addMessageReceivedHandler(this);
+			units = new ArrayList<Unit>();
+		}
+		
+	}
 
 	/**
 	 * Singleton method which returns the sole 
@@ -75,6 +89,12 @@ public class BattleField implements IMessageReceivedHandler {
 	public static BattleField getBattleField() throws IOException {
 		if (battlefield == null)
 			battlefield = new BattleField(MAP_WIDTH, MAP_HEIGHT);
+		return battlefield;
+	}
+	
+	public static BattleField addBattleField(Unit[][] map) throws IOException{
+		if(battlefield == null)
+			battlefield = new BattleField(map);
 		return battlefield;
 	}
 	
@@ -128,9 +148,9 @@ public class BattleField implements IMessageReceivedHandler {
 		return true;
 	}
 	
-	public void setMap (Unit[][] map)
+	public void setMap (Unit[][] units2)
 	{
-		this.map = map;
+		this.map = units2;
 	}
 	
 	public Unit[][] getMap ()

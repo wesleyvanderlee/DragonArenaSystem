@@ -1,30 +1,49 @@
+import java.io.IOException;
+
 import Log.Logger;
 import RMI.Configuration;
 import RMI.GameClient;
 import RMI.GameServer;
+import units.Dragon;
 
 public class Core {
 
 	public static void main(String[] args) throws Exception {
 
 		Logger.init();
-		
-		for(int i=0; i< 5; i++){
-			GameServer gameServerImplmenetation = new GameServer(Configuration.REMOTE_IDS[i], Configuration.REMOTE_HOSTS[i],
-				Configuration.REMOTE_PORTS[i], Configuration.CALLBACK_PORT);
-			Logger.log("New server at " + Configuration.REMOTE_HOSTS[i] + ":" + Configuration.REMOTE_PORTS[i]);
+
+		for (int i = 0; i < 5; i++) {
+			// GameServer gameServerImplementation =
+			int index = i;
+			new Thread(new Runnable() {
+				public void run() {
+					try {
+						new GameServer(Configuration.SERVER_IDS[index], Configuration.SERVER_HOSTS[index],
+								Configuration.CLIENT_REGISTRY_PORTS[index], Configuration.SERVER_REGISTRY_PORT, Configuration.CALLBACK_PORT);
+					} catch (IOException e) {
+						e.printStackTrace();
+
+					}
+				}
+			}).start();
+			Logger.log("New server at " + Configuration.SERVER_HOSTS[i] + ":" + Configuration.CLIENT_REGISTRY_PORTS[i]);
 		}
-		
-		for(int i= 0; i<20; i++){
-			int ind = i %5;
-			GameClient gc = new GameClient(Configuration.REMOTE_IDS[ind], Configuration.REMOTE_HOSTS[ind], Configuration.REMOTE_PORTS[ind]);
-			Logger.log(Logger.Level.FINE, "New Client at " + Configuration.REMOTE_HOSTS[ind] + ":" + Configuration.REMOTE_PORTS[ind]);
-			gc.run();
+		for (int i = 0; i < 20; i++) {
+			int clientID = i;
+			int index = i % 5;
+			new Thread(new Runnable() {
+				public void run() {
+					try {
+						new GameClient(clientID, Configuration.SERVER_IDS[index], Configuration.SERVER_REGISTRY_PORT,
+								Configuration.SERVER_HOSTS[index], Configuration.CLIENT_REGISTRY_PORTS[index]);
+					} catch (Exception e) {
+						e.printStackTrace();
+
+					}
+				}
+			}).start();
 		}
-		
 		Logger.log(Logger.Level.SEVR, "Finish main");
-		
-		
 
 	}
 
