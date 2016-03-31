@@ -3,6 +3,7 @@ package game;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -10,7 +11,7 @@ import java.util.ArrayList;
 import RMI.Configuration;
 import units.Unit;
 
-public class SimpleBattleField implements Runnable{
+public class SimpleBattleField implements Runnable {
 	private Unit[][] map;
 	public final static int MAP_WIDTH = 25;
 	public final static int MAP_HEIGHT = 25;
@@ -20,8 +21,8 @@ public class SimpleBattleField implements Runnable{
 	ObjectOutputStream out;
 	ObjectInputStream in;
 	int port;
-	boolean accept = false;
-	
+	boolean accept = true;
+
 	public SimpleBattleField(int port) {
 		// Socket local = new LocalSocket();
 		// this.battlefieldID = ID;
@@ -36,11 +37,10 @@ public class SimpleBattleField implements Runnable{
 		}
 	}
 
-	
-	public void onMessageRecieved(){
-		
+	public void onMessageRecieved() {
+
 	}
-	
+
 	private boolean spawnUnit(Unit unit, int x, int y) {
 		synchronized (this) {
 			if (map[x][y] != null)
@@ -93,43 +93,37 @@ public class SimpleBattleField implements Runnable{
 		unitToRemove.disconnect();
 		units.remove(unitToRemove);
 	}
-		
+
 	public synchronized void shutdown() {
-		// Remove all units from the battlefield and make them disconnect from the server
+		// Remove all units from the battlefield and make them disconnect from
+		// the server
 		for (Unit unit : units) {
 			unit.disconnect();
 			unit.stopRunnerThread();
 		}
 	}
 
-
 	@Override
 	public void run() {
 		try {
-			if(!accept){
-				System.out.println("new battlefield a at: [" + port + "]");
-				singleBattlefieldSocket = new ServerSocket( port);
-								
+			
+			singleBattlefieldSocket = new ServerSocket(port, 10);
+			
+			while (true) {
 				connection = singleBattlefieldSocket.accept();
-				System.out.println("new battlefield b at: [" + port + "]");
 				out = new ObjectOutputStream(connection.getOutputStream());
-				out.flush();
 				in = new ObjectInputStream(connection.getInputStream());
-				accept = true;
+				String message = (String) in.readObject();
+				System.out.println("reading dragon message: " + message);
+
+				if (message.equals("SPAWN")) {
+					System.out.println("SimpleBattleField recieved message: " + message);
+				}
 			}
-			String message = (String) in.readObject();
-			System.out.println("SimpleBattleField recieved message: " + message);
-			
-			
-		} catch (ClassNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
+
+		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-				
-		
 	}
-
 }

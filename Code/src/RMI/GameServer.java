@@ -39,16 +39,8 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		this.HOST = SERVER_HOST;
 		this.SERVER_REGISTRY_PORT = SERVER_REGISTRY_PORT;
 		this.register();
-		System.out.println("new gs a");
 		this.battlefield = new SimpleBattleField(Configuration.BATTLEFIELD_BASE_PORT + this.getRank());
 		this.battleFieldThread = new Thread(battlefield);
-//		try {
-//			this.battleFieldThread.join();
-//		} catch (InterruptedException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
-		System.out.println("new gs b");
 		this.battleFieldThread.start();
 		
 		oldestGameServer = this;
