@@ -71,6 +71,7 @@ public class LocalSocket extends Socket {
 	{
 		if (localMap.containsKey(URL))
 		{
+			
 			message.put("origin", getURL());
 			localMap.get(URL).receiveMessage(message);
 		}

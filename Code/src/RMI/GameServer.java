@@ -153,7 +153,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 				public void run() {
 					try {
 						System.out.println(id + " added a dragon at: (" + x + "," + y + ")");
-						new Dragon(x, y);
+						new Dragon(ID, x, y);
 						System.out.println("--"+id);
 						
 					} catch (IOException e) {

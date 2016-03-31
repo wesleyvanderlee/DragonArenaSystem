@@ -40,7 +40,7 @@ public class BattleField implements IMessageReceivedHandler {
 	 */
 	private int lastUnitID = 0;
 
-	public static String battlefieldID;
+	public String battlefieldID;
 	public final static int MAP_WIDTH = 25;
 	public final static int MAP_HEIGHT = 25;
 	private ArrayList <Unit> units; 
@@ -57,7 +57,8 @@ public class BattleField implements IMessageReceivedHandler {
 		synchronized (this) 
 		{
 			map = new Unit[width][height];
-			local.register(BattleField.battlefieldID);
+			
+			local.register(battlefieldID);
 			serverSocket = new SynchronizedSocket(local);
 			serverSocket.addMessageReceivedHandler(this);
 			units = new ArrayList<Unit>();
@@ -71,8 +72,9 @@ public class BattleField implements IMessageReceivedHandler {
 		synchronized (this) 
 		{
 			map = map;
-			local.register(BattleField.battlefieldID);
+			local.register(battlefieldID);
 			serverSocket = new SynchronizedSocket(local);
+			System.out.println("@@@@@@@@@@@@@@@"+serverSocket.toString());
 			serverSocket.addMessageReceivedHandler(this);
 			units = new ArrayList<Unit>();
 		}
