@@ -12,5 +12,5 @@ public interface GameServerInterface extends Remote{
 	public void initDragon(int x, int y) throws java.rmi.RemoteException;
 	public void initMe(GameServerInterface gs) throws Exception;
 	public void onMessageReceived(Message msg) throws Exception;
-	public BattleField getBattlefield() throws java.rmi.RemoteException;
+//	public BattleField getBattlefield() throws java.rmi.RemoteException;
 }

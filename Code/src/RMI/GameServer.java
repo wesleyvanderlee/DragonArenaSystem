@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.concurrent.locks.ReentrantLock;
 
 import game.BattleField;
-import presentation.BattleFieldViewer;
+import game.SimpleBattleField;
 import units.Coordinate;
 import units.Dragon;
 import units.Unit;
@@ -23,7 +23,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	String HOST;
 	int SERVER_REGISTRY_PORT;
 	Registry severRegistry;
-	BattleField battlefield;
+	SimpleBattleField battlefield;
 	ArrayList<GameServerInterface> gameServers;
 	Thread runnerThread;
 	ArrayList<String> gameClients;
@@ -38,10 +38,9 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		this.HOST = SERVER_HOST;
 		this.SERVER_REGISTRY_PORT = SERVER_REGISTRY_PORT;
 		this.register();
-		System.out.println(serverID);
-		this.battlefield = BattleField.getBattleField(serverID+"_BattleField");
+		this.battlefield = new SimpleBattleField();
 		oldestGameServer = this;
-		lock.lock(); // blocks until current thread gets the lock
+		lock.lock();
 		try {
 			sync();
 
@@ -81,14 +80,13 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 
 	public void initMe(GameServerInterface gs) throws RemoteException {
 		this.oldestGameServer = gs;
-//		System.out.println(this.getID() + " believes " + oldestGameServer.getID() + " is oldest ");
 		this.makeDragons();
 	}
 
 	private void makeDragons() {
 		try {
 			if (oldestGameServer.getID().equals(this.getID())) {
-				System.out.println("Dragons created by " + this.getID());
+//				System.out.println("Dragons created by " + this.getID());
 				/* All the dragons connect */
 				ArrayList<Coordinate> coords = new ArrayList<Coordinate>();
 				for (int i = 0; i < Configuration.DRAGON_COUNT; i++) {
@@ -152,9 +150,9 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		Thread t = new Thread(new Runnable() {
 				public void run() {
 					try {
-						System.out.println(id + " added a dragon at: (" + x + "," + y + ")");
+//						System.out.println(id + " added a dragon at: (" + x + "," + y + ")");
 						new Dragon(x, y);
-						System.out.println("--"+id);
+//						System.out.println("--"+id);
 						
 					} catch (IOException e) {
 						System.err.println("wtf");
@@ -198,14 +196,6 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		return true;
 	}
 
-	public void setBattlefield(BattleField battlefield) {
-		this.battlefield = battlefield;
-	}
-
-	public BattleField getBattlefield() {
-		return this.battlefield;
-	}
-
 	public void onMessageReceived(Message msg) throws Exception {
 		MessageRequest request = (MessageRequest) msg.get("request");
 		switch (request) {
@@ -243,14 +233,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		otherSever.onMessageReceived(message);
 	}
 
-	private void sendBattlefield(int ID, MessageRequest request) throws Exception {
-		Message message = new Message();
-		message.put("request", request);
-		message.put("ID", this.ID);
-		message.put("battlefieldMap", this.battlefield.getMap());
-		GameServerInterface otherSever = (GameServerInterface) severRegistry.lookup(ID + "");
-		otherSever.onMessageReceived(message);
-	}
+
 
 	@Override
 	public void run() {

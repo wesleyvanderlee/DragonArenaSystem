@@ -76,7 +76,6 @@ public class BattleField implements IMessageReceivedHandler {
 			serverSocket.addMessageReceivedHandler(this);
 			units = new ArrayList<Unit>();
 		}
-		
 	}
 
 	/**
@@ -88,7 +87,8 @@ public class BattleField implements IMessageReceivedHandler {
 	 */
 	public static BattleField getBattleField(String ID) throws IOException {
 //		if (battlefield == null)
-			battlefield = new BattleField(MAP_WIDTH, MAP_HEIGHT, ID);
+//		System.out.println("new bf for : " + ID);
+		battlefield = new BattleField(MAP_WIDTH, MAP_HEIGHT, ID);
 		return battlefield;
 	}
 	

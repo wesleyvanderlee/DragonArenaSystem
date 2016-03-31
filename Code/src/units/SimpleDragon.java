@@ -19,7 +19,7 @@ import game.GameState;
  * @author Pieter Anemaet, Boaz Pat-El
  */
 @SuppressWarnings("serial")
-public class Dragon extends Unit implements Runnable, Serializable {
+public class SimpleDragon extends SimpleUnit implements Runnable, Serializable {
 	/* Reaction speed of the dragon
 	 * This is the time needed for the dragon to take its next turn.
 	 * Measured in half a seconds x GAME_SPEED.
@@ -40,7 +40,7 @@ public class Dragon extends Unit implements Runnable, Serializable {
 	 * @throws IOException 
 	 *
 	 */
-	public Dragon(int x, int y) throws IOException {
+	public SimpleDragon(int x, int y) throws IOException {
 		/* Spawn the dragon with a random number of hitpoints between
 		 * 50..100 and 5..20 attackpoints. */
 		super((int)(Math.random() * (MAX_HITPOINTS - MIN_HITPOINTS) + MIN_HITPOINTS), (int)(Math.random() * (MAX_ATTACKPOINTS - MIN_ATTACKPOINTS) + MIN_ATTACKPOINTS));
