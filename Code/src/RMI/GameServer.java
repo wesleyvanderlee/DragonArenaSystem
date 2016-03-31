@@ -10,8 +10,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import game.BattleField;
 import game.SimpleBattleField;
-import units.Coordinate;
-import units.Dragon;
+import units.SimpleDragon;
 import units.Unit;
 
 public class GameServer extends UnicastRemoteObject implements GameServerInterface, Runnable {
@@ -24,6 +23,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	int SERVER_REGISTRY_PORT;
 	Registry severRegistry;
 	SimpleBattleField battlefield;
+	Thread battleFieldThread;
 	ArrayList<GameServerInterface> gameServers;
 	Thread runnerThread;
 	ArrayList<String> gameClients;
@@ -33,12 +33,24 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 
 	public GameServer(String serverID, String SERVER_HOST, int SERVER_REGISTRY_PORT) throws IOException {
 		super();
+		
 		this.gameClients = new ArrayList<String>();
 		this.ID = serverID;
 		this.HOST = SERVER_HOST;
 		this.SERVER_REGISTRY_PORT = SERVER_REGISTRY_PORT;
 		this.register();
-		this.battlefield = new SimpleBattleField();
+		System.out.println("new gs a");
+		this.battlefield = new SimpleBattleField(Configuration.BATTLEFIELD_BASE_PORT + this.getRank());
+		this.battleFieldThread = new Thread(battlefield);
+//		try {
+//			this.battleFieldThread.join();
+//		} catch (InterruptedException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
+		System.out.println("new gs b");
+		this.battleFieldThread.start();
+		
 		oldestGameServer = this;
 		lock.lock();
 		try {
@@ -53,6 +65,10 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 
 	}
 
+	public int getRank(){
+		return Integer.parseInt(ID.substring(ID.length()-1,ID.length()));
+	}
+	
 	public String getID() {
 		return this.ID;
 	}
@@ -88,7 +104,6 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 			if (oldestGameServer.getID().equals(this.getID())) {
 //				System.out.println("Dragons created by " + this.getID());
 				/* All the dragons connect */
-				ArrayList<Coordinate> coords = new ArrayList<Coordinate>();
 				for (int i = 0; i < Configuration.DRAGON_COUNT; i++) {
 					/* Try picking a random spot */
 					int x, y, attempt = 0;
@@ -112,13 +127,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 					message.put("x", finalX);
 					message.put("y", finalY);
 					serverBroadCast(message);
-					/*
-					 * Create the new dragon in a separate thread, making sure
-					 * it does not block the system.
-					 */
-
 				}
-				// Communicate dragon coordinates with all other servers
 
 				
 			}
@@ -144,24 +153,20 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	}
 
 	public void initDragon(int x, int y) {
-//		System.out.println(this.getID());
-//		for (Coordinate coord : coords) {
 		String id = this.getID();
-		Thread t = new Thread(new Runnable() {
-				public void run() {
-					try {
-//						System.out.println(id + " added a dragon at: (" + x + "," + y + ")");
-						new Dragon(x, y);
-//						System.out.println("--"+id);
-						
-					} catch (IOException e) {
-						System.err.println("wtf");
-						e.printStackTrace();
-					}
-				}
-			});
-		t.start();
+		SimpleDragon dragon;
+		try {
+			
+			dragon = new SimpleDragon(x, y, Configuration.BATTLEFIELD_BASE_PORT + this.getRank());
+			Thread t = new Thread (dragon);
+			t.start();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
+		
+	
 //		}
 		// new Thread(new Runnable()
 		// {
@@ -245,4 +250,11 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		return this.ID;
 	}
 
+	// GAME ACTIONS
+	
+	
+	
+	
+	
+	
 }

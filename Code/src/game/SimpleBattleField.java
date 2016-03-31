@@ -1,26 +1,28 @@
 package game;
 
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.ArrayList;
 
-import RMI.MessageRequest;
-import core.LocalSocket;
-import core.Message;
-import core.Socket;
-import core.SynchronizedSocket;
-import core.exception.IDNotAssignedException;
-import units.Dragon;
-import units.Player;
+import RMI.Configuration;
 import units.Unit;
-import units.Unit.UnitType;
 
-public class SimpleBattleField {
+public class SimpleBattleField implements Runnable{
 	private Unit[][] map;
 	public final static int MAP_WIDTH = 25;
 	public final static int MAP_HEIGHT = 25;
 	private ArrayList<Unit> units;
-
-	public SimpleBattleField() {
+	ServerSocket singleBattlefieldSocket;
+	Socket connection = null;
+	ObjectOutputStream out;
+	ObjectInputStream in;
+	int port;
+	boolean accept = false;
+	
+	public SimpleBattleField(int port) {
 		// Socket local = new LocalSocket();
 		// this.battlefieldID = ID;
 		synchronized (this) {
@@ -29,9 +31,16 @@ public class SimpleBattleField {
 			// serverSocket = new SynchronizedSocket(local);
 			// serverSocket.addMessageReceivedHandler(this);
 			units = new ArrayList<Unit>();
+			this.port = port;
+
 		}
 	}
 
+	
+	public void onMessageRecieved(){
+		
+	}
+	
 	private boolean spawnUnit(Unit unit, int x, int y) {
 		synchronized (this) {
 			if (map[x][y] != null)
@@ -91,6 +100,36 @@ public class SimpleBattleField {
 			unit.disconnect();
 			unit.stopRunnerThread();
 		}
+	}
+
+
+	@Override
+	public void run() {
+		try {
+			if(!accept){
+				System.out.println("new battlefield a at: [" + port + "]");
+				singleBattlefieldSocket = new ServerSocket( port);
+								
+				connection = singleBattlefieldSocket.accept();
+				System.out.println("new battlefield b at: [" + port + "]");
+				out = new ObjectOutputStream(connection.getOutputStream());
+				out.flush();
+				in = new ObjectInputStream(connection.getInputStream());
+				accept = true;
+			}
+			String message = (String) in.readObject();
+			System.out.println("SimpleBattleField recieved message: " + message);
+			
+			
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+				
+		
 	}
 
 }

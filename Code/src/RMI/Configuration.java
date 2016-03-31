@@ -7,7 +7,7 @@ public class Configuration {
 	public static final String[] SERVER_HOSTS = {"localhost", "localhost", "localhost", "localhost", "localhost"};
 	public static final int[] SERVER_REGISTRY_PORTS = {8989,8990,8991,8992,8993};
 	public static final int DRAGON_COUNT = 20;
-
+	public static final int BATTLEFIELD_BASE_PORT = 4001; 
 
 
 }

@@ -1,11 +1,12 @@
 package units;
 
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import java.util.ArrayList;
+import java.net.Socket;
 
-import game.BattleField;
-import game.GameState;
+import core.Message;
 
 /**
  * A dragon is a non-playing character, which can't
@@ -33,100 +34,78 @@ public class SimpleDragon extends SimpleUnit implements Runnable, Serializable {
 	// The minimum and maximum amount of hitpoints that a particular dragon has
 	public static final int MIN_ATTACKPOINTS = 5;
 	public static final int MAX_ATTACKPOINTS = 20;
+	public boolean connected = false; 
 	
+	Socket requestSocket;
+	ObjectOutputStream out;
+	ObjectInputStream in;
+	int port;
 	/**
 	 * Spawn a new dragon, initialize the 
 	 * reaction speed 
 	 * @throws IOException 
 	 *
 	 */
-	public SimpleDragon(int x, int y) throws IOException {
+	public SimpleDragon(int x, int y, int port) throws IOException {
 		/* Spawn the dragon with a random number of hitpoints between
 		 * 50..100 and 5..20 attackpoints. */
 		super((int)(Math.random() * (MAX_HITPOINTS - MIN_HITPOINTS) + MIN_HITPOINTS), (int)(Math.random() * (MAX_ATTACKPOINTS - MIN_ATTACKPOINTS) + MIN_ATTACKPOINTS));
-		
+		System.out.println("connaected to " + port);
+		this.port= port;
 		/* Create a random delay */
 		timeBetweenTurns = (int)(Math.random() * (MAX_TIME_BETWEEN_TURNS - MIN_TIME_BETWEEN_TURNS)) + MIN_TIME_BETWEEN_TURNS;
 
-		if (!spawn(x, y))
-		{
-			return; // We could not spawn on the battlefield
-		}
+//		if (!spawn(x, y))
+//		{
+//			return; // We could not spawn on the battlefield
+//		}
 		/* Awaken the dragon */
+		
+
+		
+//		sendMessageToBattleField("SPAWN" + x+ "," + y);
+		
 		
 		runnerThread = new Thread(this);
 		runnerThread.start();
 	}
 
-	/**
-	 * Roleplay the dragon. Make the dragon act once a while,
-	 * only stopping when the dragon is actually dead or the 
-	 * program has halted.
-	 * 
-	 * It checks if an enemy is near and, if so, it attacks that
-	 * specific enemy.
-	 */
-	@SuppressWarnings("static-access")
-	public void run() 
-	{
-//		System.out.println("Dragon thread running");
-		ArrayList <Direction> adjacentPlayers = new ArrayList<Direction> ();
+	public void sendMessageToBattleField(String msg){
+		try {
+			out.writeObject(msg);
+			out.flush();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	
+	}
+
+	@Override
+	public void onMessageReceived(Message message) {
+		// TODO Auto-generated method stub
 		
-		this.running = true;
+	}
 
-		while(GameState.getRunningState() && this.running) 
-		{
-			try 
-			{
-				/* Sleep while the dragon is considering its next move */
-				Thread.currentThread().sleep((int)(timeBetweenTurns * 500 * GameState.GAME_SPEED));
-
-				/* Stop if the dragon runs out of hitpoints */
-				if (getHitPoints() <= 0)
-					break;
-
-				// Decide what players are near
-				if (getY() > 0)
-					if ( getType( getX(), getY() - 1 ) == UnitType.player )
-						adjacentPlayers.add(Direction.up);
-				if (getY() < BattleField.MAP_WIDTH - 1)
-					if ( getType( getX(), getY() + 1 ) == UnitType.player )
-						adjacentPlayers.add(Direction.down);
-				if (getX() > 0)
-					if ( getType( getX() - 1, getY() ) == UnitType.player )
-						adjacentPlayers.add(Direction.left);
-				if (getX() < BattleField.MAP_WIDTH - 1)
-					if ( getType( getX() + 1, getY() ) == UnitType.player )
-						adjacentPlayers.add(Direction.right);
-				
-				// Pick a random player to attack
-				if (adjacentPlayers.size() == 0)
-					continue; // There are no players to attack
-				Direction playerToAttack = adjacentPlayers.get( 0 );
-				
-				// Attack the player
-				switch (playerToAttack) {
-					case up:
-						this.dealDamage( getX(), getY() - 1, this.getAttackPoints() );
-						break;
-					case right:
-						this.dealDamage( getX() + 1, getY(), this.getAttackPoints() );
-						break;
-					case down:
-						this.dealDamage( getX(), getY() + 1, this.getAttackPoints() );
-						break;
-					case left:
-						this.dealDamage( getX() - 1, getY(), this.getAttackPoints() );
-						break;
-				}
-				
-			} 
-			catch (InterruptedException e) 
-			{
+	@Override
+	public void run() {
+		// TODO Auto-generated method stub
+//		if(!connected){
+			try {
+				requestSocket = new Socket("localhost",port);
+				out = new ObjectOutputStream(requestSocket.getOutputStream());
+				out.flush();
+				in = new ObjectInputStream(requestSocket.getInputStream());
+				System.out.println("connected to " + port);
+				connected = true;
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-		}
-		clientSocket.unRegister();
+		
+		if(connected)
+		sendMessageToBattleField("SPAWN" + 1+ "," + 0);
+		
 	}
+
 
 }

@@ -26,10 +26,6 @@ import game.GameState;
  */
 public abstract class SimpleUnit implements Serializable, IMessageReceivedHandler {
 
-
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
 
 	// Position of the unit
@@ -153,12 +149,6 @@ public abstract class SimpleUnit implements Serializable, IMessageReceivedHandle
 	public int getAttackPoints() {
 		return attackPoints;
 	}
-	
-	
-	// Disconnects the unit from the battlefield by exiting its run-state
-	public void disconnect() {
-		running = false;
-	}
 
 	/**
 	 * Stop the running thread. This has to be called explicitly to make sure the program 
@@ -170,6 +160,5 @@ public abstract class SimpleUnit implements Serializable, IMessageReceivedHandle
 		} catch (InterruptedException ex) {
 			assert(false) : "Unit stopRunnerThread was interrupted";
 		}
-		
 	}
 }
