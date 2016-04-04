@@ -73,7 +73,7 @@ public class SimpleDragon extends SimpleUnit implements Runnable, Serializable {
 		this.running = true;
 		while(GameState.getRunningState() && this.running) 
 		{
-			System.out.println("Running Dragon");
+			//System.out.println("Running Dragon");
 			try 
 			{
 				/* Sleep while the dragon is considering its next move */

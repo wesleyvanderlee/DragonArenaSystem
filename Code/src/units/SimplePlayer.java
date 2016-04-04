@@ -3,6 +3,7 @@ package units;
 import java.io.IOException;
 import java.io.Serializable;
 
+import RMI.Message;
 import game.BattleField;
 import game.GameState;
 
@@ -38,10 +39,10 @@ public class SimplePlayer extends SimpleUnit implements Runnable, Serializable
 	 * the hit and the attackpoints. 
 	 * @throws IOException 
 	 */
-	public SimplePlayer(int x, int y) throws IOException 
+	public SimplePlayer(int x, int y, String serverID, String SERVER_REGISTRY_HOST, int SERVER_REGISTRY_PORT) throws IOException 
 	{
 		/* Initialize the hitpoints and attackpoints */
-		super((int)(Math.random() * (MAX_HITPOINTS - MIN_HITPOINTS) + MIN_HITPOINTS), (int)(Math.random() * (MAX_ATTACKPOINTS - MIN_ATTACKPOINTS) + MIN_ATTACKPOINTS));
+		super((int)(Math.random() * (MAX_HITPOINTS - MIN_HITPOINTS) + MIN_HITPOINTS), (int)(Math.random() * (MAX_ATTACKPOINTS - MIN_ATTACKPOINTS) + MIN_ATTACKPOINTS), serverID, SERVER_REGISTRY_HOST, SERVER_REGISTRY_PORT);
 
 		/* Create a random delay */
 		timeBetweenTurns = (int)(Math.random() * (MAX_TIME_BETWEEN_TURNS - MIN_TIME_BETWEEN_TURNS)) + MIN_TIME_BETWEEN_TURNS;
@@ -68,7 +69,7 @@ public class SimplePlayer extends SimpleUnit implements Runnable, Serializable
 	@SuppressWarnings("static-access")
 	public void run() {
 		Direction direction;
-		UnitType adjacentUnitType;
+		UnitType adjacentUnitType = UnitType.undefined;
 		int targetX = 0, targetY = 0;
 		
 		this.running = true;
@@ -124,7 +125,8 @@ public class SimplePlayer extends SimpleUnit implements Runnable, Serializable
 				// Get what unit lies in the target square
 				adjacentUnitType = this.getType(targetX, targetY);
 				
-				switch (adjacentUnitType) {
+				switch (adjacentUnitType) 
+				{
 					case undefined:
 						// There is no unit in the square. Move the player to this square
 						this.moveUnit(targetX, targetY);
@@ -142,7 +144,12 @@ public class SimplePlayer extends SimpleUnit implements Runnable, Serializable
 				e.printStackTrace();
 			}
 		}
-		clientSocket.unRegister();
+	}
+
+	@Override
+	public void onMessageReceived(Message message) {
+		// TODO Auto-generated method stub
+		
 	}
 
 }

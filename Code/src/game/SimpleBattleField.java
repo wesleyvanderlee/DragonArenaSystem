@@ -1,6 +1,11 @@
 package game;
 
+import java.awt.Color;
+import java.io.IOException;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
+
+import javax.swing.text.html.StyleSheet;
 
 import RMI.Message;
 import RMI.MessageRequest;
@@ -9,18 +14,22 @@ import units.SimplePlayer;
 import units.SimpleUnit;
 import units.Unit.UnitType;
 
-public class SimpleBattleField{
+public class SimpleBattleField extends UnicastRemoteObject implements SimpleBattleFieldInterface{
 	private SimpleUnit[][] map;
 	public final static int MAP_WIDTH = 25;
 	public final static int MAP_HEIGHT = 25;
 	private ArrayList<SimpleUnit> units;
 	boolean accept = false;
-	
-	public SimpleBattleField() {
+	public SimpleBattleField()throws IOException {
 		synchronized (this) {
 			this.map = new SimpleUnit[MAP_WIDTH][MAP_HEIGHT];
 			units = new ArrayList<SimpleUnit>();
 		}
+	}
+	
+	public SimpleBattleField getBattleField() throws Exception 
+	{
+		return this;
 	}
 	
 	private boolean spawnUnit(SimpleUnit unit, int x, int y) {
@@ -172,5 +181,53 @@ public class SimpleBattleField{
 				break;
 		}
 		return reply;
+	}
+	
+	public int[] getRandomLocation()
+	{
+		/* Try picking a random spot */
+		int x, y, attempt = 0;
+		do {
+			x = (int) (Math.random() * BattleField.MAP_WIDTH);
+			y = (int) (Math.random() * BattleField.MAP_HEIGHT);
+			attempt++;
+		} while (getUnit(x, y) != null && attempt < 10);
+
+		int[] values={x,y};
+		return values;
+	}
+	
+	public String battleFieldString()throws Exception
+	{
+		String string="";
+		int count= 0;
+		string += "  1 |2 |3 |4 |5 |6 |7 |8 |9 |10|11|12|13|14|15|16|17|18|19|20|21|22|23|24|25|\n";
+		for(int r = 0; r < map.length; r++)
+		{
+			string += count;
+			for(int c = 0; c < map.length; c++)
+			{
+				string += "|";
+				if(map[r][c] == null)
+				{
+					string += "  ";
+				}
+				else if(map[r][c] instanceof SimplePlayer)
+				{
+					
+					string += "P ";
+				}
+				else if(map[r][c] instanceof SimpleDragon)
+				{	
+					string += "D ";
+				}
+				
+			}
+			count++;
+			string += "|\n";
+			string += "  ----------------------------------------------------------------------------\n";
+		}
+		return string;
+		
 	}
 }

@@ -13,8 +13,13 @@ import javax.swing.JPanel;
 
 import game.BattleField;
 import game.GameState;
+import game.SimpleBattleField;
+import game.SimpleBattleFieldInterface;
 import units.Dragon;
 import units.Player;
+import units.SimpleDragon;
+import units.SimplePlayer;
+import units.SimpleUnit;
 import units.Unit;
 
 /**
@@ -40,13 +45,13 @@ public class BattleFieldViewer extends JPanel implements Runnable {
 	 * (See stopRunnerThread())
 	 */
 	private Thread runnerThread;
-	private BattleField battlefield;
+	private SimpleBattleField battlefield;
 
 	/**
 	 * Create a battlefield viewer in 
 	 * a new thread. 
 	 */
-	public BattleFieldViewer(BattleField battlefield) {
+	public BattleFieldViewer(SimpleBattleFieldInterface battlefield) {
 		doubleBufferGraphics = null;
 		runnerThread = new Thread(this);
 		runnerThread.start();
@@ -67,12 +72,12 @@ public class BattleFieldViewer extends JPanel implements Runnable {
 	 * for dragons and a blue one for players. 
 	 */
 	public void paint(Graphics g) {
-		Unit u;
+		SimpleUnit u;
 		double x = 0, y = 0;
 		double xRatio = (double)this.getWidth() / (double)BattleField.MAP_WIDTH;
 		double yRatio = (double)this.getHeight() / (double)BattleField.MAP_HEIGHT;
 		double filler;
-		BattleField bf = null;
+		SimpleBattleField bf = null;
 		try {
 			bf = battlefield.getBattleField();
 		} catch (IOException e) {
@@ -98,9 +103,9 @@ public class BattleFieldViewer extends JPanel implements Runnable {
 				u = bf.getUnit(i, j);
 				if (u == null) continue; // Nothing to draw in this sector
 
-				if (u instanceof Dragon)
+				if (u instanceof SimpleDragon)
 					doubleBufferGraphics.setColor(Color.RED);
-				else if (u instanceof Player)
+				else if (u instanceof SimplePlayer)
 					doubleBufferGraphics.setColor(Color.BLUE);
 
 				/* Fill the unit color */

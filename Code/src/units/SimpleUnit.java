@@ -12,7 +12,6 @@ import RMI.Message;
 import RMI.MessageRequest;
 import core.IMessageReceivedHandler;
 import game.GameState;
-import units.Unit.UnitType;
 
 /**
  * Base class for all players whom can 
@@ -64,7 +63,6 @@ public abstract class SimpleUnit implements Serializable, IMessageReceivedHandle
 	GameServerInterface gameServer;
 	int SERVER_REGISTRY_PORT;
 	Registry serverRegister;
-	int port;
 
 	/**
 	 * Create a new unit and specify the 
@@ -180,7 +178,7 @@ public abstract class SimpleUnit implements Serializable, IMessageReceivedHandle
 		 * designated position. 
 		 */
 		int id = localMessageCounter++;
-		Message spawnMessage = new Message(),reply;
+		Message spawnMessage = new Message();
 		spawnMessage.put("request", MessageRequest.spawnUnit);
 		spawnMessage.put("x", x);
 		spawnMessage.put("y", y);
@@ -239,6 +237,58 @@ public abstract class SimpleUnit implements Serializable, IMessageReceivedHandle
 		}
 	}
 	
+	protected void moveUnit(int x, int y)
+	{
+		Message moveMessage = new Message(), result = null;
+		int id = localMessageCounter++;
+		moveMessage.put("request", MessageRequest.moveUnit);
+		moveMessage.put("x", x);
+		moveMessage.put("y", y);
+		moveMessage.put("id", id);
+		moveMessage.put("unit", this);
+
+		// Send the getUnit message
+		sendServerMessage(moveMessage);
+
+		// Wait for the reply
+		while(!messageList.containsKey(id))
+		{
+			try {
+				Thread.sleep(50);
+			} catch (InterruptedException e) {
+			}
+
+			// Quit if the game window has closed
+			if (!GameState.getRunningState())
+				return;
+		}
+
+		result = messageList.get(id);
+		// Remove the result from the messageList
+		messageList.put(id, null);
+	}
+	
+	public void healDamage(int x, int y, int healed) {
+		/* Create a new message, notifying the board
+		 * that a unit has been healed.
+		 */
+		int id;
+		Message healMessage;
+		synchronized (this) {
+			id = localMessageCounter++;
+
+			healMessage = new Message();
+			healMessage.put("request", MessageRequest.healDamage);
+			healMessage.put("x", x);
+			healMessage.put("y", y);
+			healMessage.put("healed", healed);
+			healMessage.put("id", id);
+		}
+
+		// Send a spawn message
+		sendServerMessage(healMessage);
+	}
+	
 	/**
 	 * Returns whether the indicated square contains a player, a dragon or nothing. 
 	 * @param x: x coordinate
@@ -246,7 +296,7 @@ public abstract class SimpleUnit implements Serializable, IMessageReceivedHandle
 	 * @return UnitType: the indicated square contains a player, a dragon or nothing.
 	 */
 	protected UnitType getType(int x, int y) {
-		Message getTypeMessage = new Message(), result = null, reply;
+		Message getTypeMessage = new Message(), result = null;
 		int id = localMessageCounter++;
 		getTypeMessage.put("request", MessageRequest.getType);
 		getTypeMessage.put("x", x);
@@ -265,12 +315,15 @@ public abstract class SimpleUnit implements Serializable, IMessageReceivedHandle
 			if (!GameState.getRunningState())
 				return UnitType.undefined;
 		}
-
+		
 		result = messageList.get(id);
 		if (result == null) // Could happen if the game window had closed
 			return UnitType.undefined;
-		messageList.put(id, null);
 		
+		if (result.get("type") == null)
+			return UnitType.undefined;
+		
+		messageList.put(id, null);
 		return (UnitType) result.get("type");	
 		
 	}

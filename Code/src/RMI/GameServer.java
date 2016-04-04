@@ -1,6 +1,8 @@
 package RMI;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.rmi.Naming;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -32,7 +34,6 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 
 	public GameServer(String serverID, String SERVER_HOST, int SERVER_REGISTRY_PORT) throws IOException {
 		super();
-		
 		this.gameClients = new ArrayList<String>();
 		this.ID = serverID;
 		this.HOST = SERVER_HOST;
@@ -130,7 +131,6 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		{
 			e.printStackTrace();
 		}
-
 	}
 	
 	public void serverBroadCast(Message message){
@@ -154,9 +154,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		String id = this.getID();
 		SimpleDragon dragon;
 		try {
-			
 			dragon = new SimpleDragon(x, y, ID, HOST, SERVER_REGISTRY_PORT);
-
 			Thread t = new Thread (dragon);
 			t.start();
 			
@@ -189,11 +187,11 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		this.gameClients.add(clientID);
 		return true;
 	}
-	int count=0;
+	
 	public Message onMessageReceived(Message msg) throws Exception {
-		MessageRequest request = (MessageRequest) msg.get("serverRequest");
+		MessageRequest serverRequest = (MessageRequest) msg.get("serverRequest");
 		Message reply = null;
-		switch (request) {
+		switch (serverRequest) {
 		case addDragon:
 			initDragon((Integer)msg.get("x"),(Integer)msg.get("y"));
 			break;
@@ -218,12 +216,24 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	@Override
 	public void run() 
 	{
-		System.out.println(ID +": is running");
+
 	}
 
 	@Override
 	public String toString() {
 		return this.ID;
+	}
+
+	@Override
+	public String getBattleField()
+	{
+		try {
+			severRegistry.rebind("BattleField", this.battlefield );
+		} catch (RemoteException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return "BattleField";
 	}
 
 	// GAME ACTIONS
