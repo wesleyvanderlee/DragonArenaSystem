@@ -11,7 +11,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import game.BattleField;
 import game.SimpleBattleField;
 import units.SimpleDragon;
-import units.Unit;
 
 public class GameServer extends UnicastRemoteObject implements GameServerInterface, Runnable {
 	/**
@@ -39,18 +38,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		this.HOST = SERVER_HOST;
 		this.SERVER_REGISTRY_PORT = SERVER_REGISTRY_PORT;
 		this.register();
-		System.out.println("new gs a");
-		this.battlefield = new SimpleBattleField(Configuration.BATTLEFIELD_BASE_PORT + this.getRank());
-		this.battleFieldThread = new Thread(battlefield);
-//		try {
-//			this.battleFieldThread.join();
-//		} catch (InterruptedException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
-		System.out.println("new gs b");
-		this.battleFieldThread.start();
-		
+		this.battlefield = new SimpleBattleField();
 		oldestGameServer = this;
 		lock.lock();
 		try {
@@ -62,7 +50,6 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 
 		this.runnerThread = new Thread(this);
 		this.runnerThread.start();
-
 	}
 
 	public int getRank(){
@@ -77,18 +64,26 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		if (!this.ID.equals(Configuration.SERVER_IDS[0]))
 			return;
 		int covered = 0;
-		while (covered < Configuration.SERVER_IDS.length) {
+		while (covered < Configuration.SERVER_IDS.length-1) {
 			for (int i = 0; i < Configuration.SERVER_IDS.length; i++) {
-				if (covered >= Configuration.SERVER_IDS.length)
-					break;
-				try {
+				try 
+				{
+					
 					Registry otherRegistry = LocateRegistry.getRegistry(Configuration.SERVER_HOSTS[i],
 							Configuration.SERVER_REGISTRY_PORTS[i]);
 					GameServerInterface otherServer = (GameServerInterface) otherRegistry
 							.lookup(Configuration.SERVER_IDS[i]);
 					otherServer.initMe(this);
 					covered++;
-				} catch (Exception e) {
+				} 
+				catch (Exception e) 
+				{
+					try {
+						initMe(this);
+					} catch (RemoteException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
 				}
 			}
 		}
@@ -97,14 +92,16 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	public void initMe(GameServerInterface gs) throws RemoteException {
 		this.oldestGameServer = gs;
 		this.makeDragons();
+
+		
 	}
 
 	private void makeDragons() {
 		try {
 			if (oldestGameServer.getID().equals(this.getID())) {
-//				System.out.println("Dragons created by " + this.getID());
 				/* All the dragons connect */
-				for (int i = 0; i < Configuration.DRAGON_COUNT; i++) {
+				for (int i = 0; i < Configuration.DRAGON_COUNT; i++) 
+				{
 					/* Try picking a random spot */
 					int x, y, attempt = 0;
 					do {
@@ -118,36 +115,37 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 					if (battlefield.getUnit(x, y) != null) {
 						break;
 					}
-
 					final int finalX = x;
 					final int finalY = y;
 					Message message = new Message();
-					message.put("request", MessageRequest.addDragon);
+					message.put("serverRequest", MessageRequest.addDragon);
 					message.put("ID", this.ID);
 					message.put("x", finalX);
 					message.put("y", finalY);
 					serverBroadCast(message);
 				}
-
-				
 			}
-		} catch (RemoteException e) {
+		} 
+		catch (Exception e) 
+		{
 			e.printStackTrace();
 		}
 
 	}
 	
 	public void serverBroadCast(Message message){
-		for (int i = 0; i < Configuration.SERVER_IDS.length; i++) {
+		for (int i = 0; i < Configuration.SERVER_IDS.length; i++) 
+		{
 			try {
 				Registry otherRegistry = LocateRegistry.getRegistry(Configuration.SERVER_HOSTS[i],
 						Configuration.SERVER_REGISTRY_PORTS[i]);
 				GameServerInterface otherServer = (GameServerInterface) otherRegistry
 						.lookup(Configuration.SERVER_IDS[i]);
 				otherServer.onMessageReceived(message);
-				
-			} catch (Exception e) {
-				e.printStackTrace();
+			} 
+			catch (Exception e) 
+			{
+				//e.printStackTrace();
 			}
 		}
 	}
@@ -157,24 +155,15 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		SimpleDragon dragon;
 		try {
 			
-			dragon = new SimpleDragon(x, y, Configuration.BATTLEFIELD_BASE_PORT + this.getRank());
+			dragon = new SimpleDragon(x, y, ID, HOST, SERVER_REGISTRY_PORT);
+
 			Thread t = new Thread (dragon);
 			t.start();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
+			
+		} catch (IOException e)
+		{
 			e.printStackTrace();
 		}
-
-		
-	
-//		}
-		// new Thread(new Runnable()
-		// {
-		// public void run()
-		// {
-		// new BattleFieldViewer();
-		// }
-		// }).start();
 	}
 
 	private void register() {
@@ -190,7 +179,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 			try {
 				severRegistry.bind(this.ID, this);
 			} catch (Exception e) {
-				e.printStackTrace();
+				//e.printStackTrace();
 			}
 		}
 
@@ -200,49 +189,36 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		this.gameClients.add(clientID);
 		return true;
 	}
-
-	public void onMessageReceived(Message msg) throws Exception {
-		MessageRequest request = (MessageRequest) msg.get("request");
+	int count=0;
+	public Message onMessageReceived(Message msg) throws Exception {
+		MessageRequest request = (MessageRequest) msg.get("serverRequest");
+		Message reply = null;
 		switch (request) {
-		case updateBattlefield:
-			updatebfmap(msg.get("battlefieldMap"));
-			break;
 		case addDragon:
 			initDragon((Integer)msg.get("x"),(Integer)msg.get("y"));
 			break;
-		case getBattlefield:
-//			sendBattlefield(origin, MessageRequest.updateBattlefield);
+		case toBattleField:
+			reply = battlefield.onMessageReceived(msg);
 			break;
 		default:
 			System.out.println("No message type found");
 			break;
 		}
-	}
-
-	private void updatebfmap(Object map) {
-		Unit[][] m;
-		try {
-			m = (Unit[][]) map;
-			System.out.println(battlefield == null);
-			// battlefield.setMap(m);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		return reply;
 	}
 
 	private void sendSeverMessage(String ID, MessageRequest request) throws Exception {
 		Message message = new Message();
-		message.put("request", request);
+		message.put("serverRequest", request);
 		message.put("ID", this.ID);
 		GameServerInterface otherSever = (GameServerInterface) severRegistry.lookup(ID);
 		otherSever.onMessageReceived(message);
 	}
 
-
-
 	@Override
-	public void run() {
-
+	public void run() 
+	{
+		System.out.println(ID +": is running");
 	}
 
 	@Override

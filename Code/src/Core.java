@@ -12,8 +12,7 @@ public class Core {
 		Logger.init();
 
 		for (int i = 0; i < 5; i++) {
-			// GameServer gameServerImplementation =
-			int index = i;
+			final int index = i;
 			new Thread(new Runnable() {
 				public void run() {
 					try {
@@ -28,8 +27,8 @@ public class Core {
 			Logger.log("New server at " + Configuration.SERVER_HOSTS[i] + ":" + Configuration.SERVER_REGISTRY_PORTS[i]);
 		}
 		for (int i = 0; i < 20; i++) {
-			int clientID = i;
-			int index = i % 5;
+			final int clientID = i;
+			final int index = i % 5;
 			new Thread(new Runnable() {
 				public void run() {
 					try {

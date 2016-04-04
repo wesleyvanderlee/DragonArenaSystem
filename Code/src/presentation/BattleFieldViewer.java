@@ -40,12 +40,13 @@ public class BattleFieldViewer extends JPanel implements Runnable {
 	 * (See stopRunnerThread())
 	 */
 	private Thread runnerThread;
+	private BattleField battlefield;
 
 	/**
 	 * Create a battlefield viewer in 
 	 * a new thread. 
 	 */
-	public BattleFieldViewer() {
+	public BattleFieldViewer(BattleField battlefield) {
 		doubleBufferGraphics = null;
 		runnerThread = new Thread(this);
 		runnerThread.start();
@@ -73,7 +74,7 @@ public class BattleFieldViewer extends JPanel implements Runnable {
 		double filler;
 		BattleField bf = null;
 		try {
-			bf = BattleField.getBattleField();
+			bf = battlefield.getBattleField();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

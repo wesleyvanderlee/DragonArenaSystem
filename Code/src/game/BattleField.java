@@ -3,13 +3,13 @@ package game;
 import java.io.IOException;
 import java.util.ArrayList;
 
+import RMI.Message;
 import RMI.MessageRequest;
 import core.IMessageReceivedHandler;
 import core.LocalSocket;
-import core.Message;
 import core.Socket;
 import core.SynchronizedSocket;
-import core.exception.IDNotAssignedException;
+import exception.IDNotAssignedException;
 import units.Dragon;
 import units.Player;
 import units.Unit;
@@ -25,7 +25,7 @@ import units.Unit.UnitType;
  * 
  * @author Pieter Anemaet, Boaz Pat-El
  */
-public class BattleField implements IMessageReceivedHandler {
+public class BattleField implements IMessageReceivedHandler, Runnable {
 	/* The array of units */
 	private Unit[][] map;
 
@@ -40,39 +40,56 @@ public class BattleField implements IMessageReceivedHandler {
 	 */
 	private int lastUnitID = 0;
 
-	public static String battlefieldID;
+	public String battlefieldID;
 	public final static int MAP_WIDTH = 25;
 	public final static int MAP_HEIGHT = 25;
 	private ArrayList <Unit> units; 
-
+	private int port;
 	/**
 	 * Initialize the battlefield to the specified size 
 	 * @param width of the battlefield 
 	 * @param height of the battlefield
 	 * @throws IOException 
 	 */
-	private BattleField(int width, int height, String ID) throws IOException {
+	private BattleField(int width, int height, String ID, int port) throws IOException {
 		Socket local = new LocalSocket();
-		this.battlefieldID = ID;
+		this.battlefieldID = ID + "_BattleField";
+		this.port = port;
 		synchronized (this) 
 		{
 			map = new Unit[width][height];
-			local.register(BattleField.battlefieldID);
-			serverSocket = new SynchronizedSocket(local);
+			local.register(battlefieldID);
+			serverSocket = new SynchronizedSocket(local, port);
 			serverSocket.addMessageReceivedHandler(this);
 			units = new ArrayList<Unit>();
 		}
 		
 	}
 	
-	private BattleField(Unit[][] map) throws IOException {
+	public BattleField(String ID, int port) throws IOException {
 		Socket local = new LocalSocket();
+		this.battlefieldID = ID + "_BattleField";
+		this.port = port;
+		synchronized (this) 
+		{
+			map = new Unit[MAP_WIDTH][MAP_HEIGHT];
+			local.register(battlefieldID);
+			serverSocket = new SynchronizedSocket(local, port);
+			serverSocket.addMessageReceivedHandler(this);
+			units = new ArrayList<Unit>();
+		}
 		
+	}
+	
+	private BattleField(Unit[][] map, String ID, int port) throws IOException {
+		Socket local = new LocalSocket();
+		this.battlefieldID = ID + "_BattleField";
+		this.port = port;
 		synchronized (this) 
 		{
 			map = map;
-			local.register(BattleField.battlefieldID);
-			serverSocket = new SynchronizedSocket(local);
+			local.register(battlefieldID);
+			serverSocket = new SynchronizedSocket(local, port);
 			serverSocket.addMessageReceivedHandler(this);
 			units = new ArrayList<Unit>();
 		}
@@ -85,20 +102,20 @@ public class BattleField implements IMessageReceivedHandler {
 	 * @return the battlefield.
 	 * @throws IOException 
 	 */
-	public static BattleField getBattleField(String ID) throws IOException {
+	public static BattleField getBattleField(String ID, int port) throws IOException {
 //		if (battlefield == null)
 //		System.out.println("new bf for : " + ID);
-		battlefield = new BattleField(MAP_WIDTH, MAP_HEIGHT, ID);
+		battlefield = new BattleField(MAP_WIDTH, MAP_HEIGHT, ID, port);
 		return battlefield;
 	}
 	
-	public static BattleField getBattleField() throws IOException {
+	public BattleField getBattleField() throws IOException {
 		return battlefield;
 	}
 	
-	public static BattleField addBattleField(Unit[][] map) throws IOException{
+	public static BattleField addBattleField(Unit[][] map,String ID, int port) throws IOException{
 		if(battlefield == null)
-			battlefield = new BattleField(map);
+			battlefield = new BattleField(map,ID, port);
 		return battlefield;
 	}
 	
@@ -332,5 +349,20 @@ public class BattleField implements IMessageReceivedHandler {
 		}
 
 		serverSocket.unRegister();
+	}
+
+	@Override
+	public void run() {
+		// TODO Auto-generated method stub
+		System.out.println(battlefieldID + ": battlefield is running");
+	}
+
+	public int getPort() {
+		return this.port;
+	}
+
+	public String getID() {
+		// TODO Auto-generated method stub
+		return this.battlefieldID;
 	}	
 }

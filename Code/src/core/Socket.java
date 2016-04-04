@@ -1,6 +1,9 @@
 package core;
 
 import java.util.ArrayList;
+
+import RMI.Message;
+
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 

@@ -3,10 +3,13 @@ package core;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.Map;
+
+import RMI.Message;
+
 import java.util.HashMap;
 
 import core.magic.SynchronizedSocketInterface;
-
+	
 /**
  * SynchronizedSocket is used to synchronize the messages
  * received from an asynchronous Socket implementation.
@@ -31,7 +34,7 @@ public class SynchronizedSocket extends Socket implements Runnable, IMessageRece
 	private long pauseTime;
 	private boolean paused;
 	private Map< String, Integer > messageCounts;
-
+	private int port;
 	/**
 	 * Create a new synchronized socket. Base
 	 * this on the given socket, listening
@@ -42,11 +45,12 @@ public class SynchronizedSocket extends Socket implements Runnable, IMessageRece
 	 * @param socket is the actual socket
 	 * to which data is being sent.
 	 */
-	public SynchronizedSocket(Socket socket) throws RemoteException {
+	public SynchronizedSocket(Socket socket, int  port) throws RemoteException {
 		this.waitQueue = new ArrayList<Message>();
 		this.sendQueue = new ArrayList<Message>();
 		this.socket = socket;
 		this.paused = false;
+		this.port = port;
 		this.messageCounts = new HashMap< String, Integer >( );
 		setMessageDelay(Math.random() / 100.0);
 		runningThread = new Thread(this);
@@ -206,7 +210,7 @@ public class SynchronizedSocket extends Socket implements Runnable, IMessageRece
 			if( uri.getAuthority( ) != null && !( "".equals( uri.getAuthority( ) ) ) )
 				theURL += uri.getAuthority( );
 			else
-				theURL += "localhost:1099";
+				theURL += "localhost:" + port;
 			if( uri.getPath( ) != null )
 				theURL += uri.getPath( );
 			if( uri.getQuery( ) != null && !( "".equals( uri.getQuery( ) ) ) )

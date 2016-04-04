@@ -1,4 +1,4 @@
-package core.exception;
+package exception;
 
 /**
  * This exception is thrown when a certain server ID

@@ -2,19 +2,17 @@ package units;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 import java.util.HashMap;
 import java.util.Map;
 
+import RMI.GameServerInterface;
+import RMI.Message;
 import RMI.MessageRequest;
 import core.IMessageReceivedHandler;
-import core.LocalSocket;
-import core.Message;
-import core.Socket;
-import core.SynchronizedSocket;
-import core.exception.AlreadyAssignedIDException;
-import core.exception.IDNotAssignedException;
-import game.BattleField;
 import game.GameState;
+import units.Unit.UnitType;
 
 /**
  * Base class for all players whom can 
@@ -50,6 +48,11 @@ public abstract class SimpleUnit implements Serializable, IMessageReceivedHandle
 	 */
 	protected Thread runnerThread;
 
+	// Map messages from their ids
+	private Map<Integer, Message> messageList;
+	// Is used for mapping an unique id to a message sent by this unit
+	private int localMessageCounter = 0;
+		
 	public enum Direction {
 		up, right, down, left
 	};
@@ -57,6 +60,11 @@ public abstract class SimpleUnit implements Serializable, IMessageReceivedHandle
 	public enum UnitType {
 		player, dragon, undefined,
 	};
+	
+	GameServerInterface gameServer;
+	int SERVER_REGISTRY_PORT;
+	Registry serverRegister;
+	int port;
 
 	/**
 	 * Create a new unit and specify the 
@@ -67,13 +75,23 @@ public abstract class SimpleUnit implements Serializable, IMessageReceivedHandle
 	 * this specific unit.
 	 * @throws IOException 
 	 */
-	public SimpleUnit(int maxHealth, int attackPoints) throws IOException {
+	public SimpleUnit(int maxHealth, int attackPoints, String serverID, String SERVER_REGISTRY_HOST, int SERVER_REGISTRY_PORT) throws IOException {
 
 		// Initialize the max health and health
 		hitPoints = maxHitPoints = maxHealth;
 
 		// Initialize the attack points
 		this.attackPoints = attackPoints;
+		messageList = new HashMap<Integer, Message>();
+		try 
+		{
+			this.SERVER_REGISTRY_PORT = SERVER_REGISTRY_PORT;
+			this.serverRegister = LocateRegistry.getRegistry(SERVER_REGISTRY_HOST, SERVER_REGISTRY_PORT);
+			this.gameServer = (GameServerInterface) serverRegister.lookup(serverID);
+		} 
+		catch (Exception e) {
+			//e.printStackTrace();
+		}
 	}
 
 	/**
@@ -149,6 +167,132 @@ public abstract class SimpleUnit implements Serializable, IMessageReceivedHandle
 	public int getAttackPoints() {
 		return attackPoints;
 	}
+	
+	/**
+	 * Tries to make the unit spawn at a certain location on the battlefield
+	 * @param x x-coordinate of the spawn location
+	 * @param y y-coordinate of the spawn location
+	 * @return true iff the unit could spawn at the location on the battlefield
+	 */
+	protected boolean spawn(int x, int y) {
+		/* Create a new message, notifying the board
+		 * the unit has actually spawned at the
+		 * designated position. 
+		 */
+		int id = localMessageCounter++;
+		Message spawnMessage = new Message(),reply;
+		spawnMessage.put("request", MessageRequest.spawnUnit);
+		spawnMessage.put("x", x);
+		spawnMessage.put("y", y);
+		spawnMessage.put("unit", this);
+		spawnMessage.put("id", id);
+		sendServerMessage(spawnMessage);
+		// Wait for the unit to be placed
+		getUnit(x, y);
+		return true;
+	}
+	
+	protected SimpleUnit getUnit(int x, int y)
+	{
+		Message getMessage = new Message(), result;
+		int id = localMessageCounter++;
+		getMessage.put("request", MessageRequest.getUnit);
+		getMessage.put("x", x);
+		getMessage.put("y", y);
+		getMessage.put("id", id);
+			
+		// Send the getUnit message
+		sendServerMessage(getMessage);
+		
+		// Wait for the reply
+		while(!messageList.containsKey(id)) {
+			try {
+				Thread.sleep(50);
+			} catch (InterruptedException e) {
+			}
+
+			// Quit if the game window has closed
+			if (!GameState.getRunningState())
+				return null;
+		}
+		
+		result = messageList.get(id);
+		messageList.put(id, null);
+		return (SimpleUnit) result.get("unit");	
+	}
+	
+	private void sendServerMessage(Message message)
+	{
+		Message reply;
+		message.put("serverRequest", MessageRequest.toBattleField);
+		try 
+		{
+			reply = gameServer.onMessageReceived(message);
+			if(reply != null)
+			{
+				messageList.put((Integer)reply.get("id"), reply);
+			}
+		} 
+		catch (Exception e) 
+		{
+			e.printStackTrace();
+		}
+	}
+	
+	/**
+	 * Returns whether the indicated square contains a player, a dragon or nothing. 
+	 * @param x: x coordinate
+	 * @param y: y coordinate
+	 * @return UnitType: the indicated square contains a player, a dragon or nothing.
+	 */
+	protected UnitType getType(int x, int y) {
+		Message getTypeMessage = new Message(), result = null, reply;
+		int id = localMessageCounter++;
+		getTypeMessage.put("request", MessageRequest.getType);
+		getTypeMessage.put("x", x);
+		getTypeMessage.put("y", y);
+		getTypeMessage.put("id", id);
+		sendServerMessage(getTypeMessage);
+
+		// Wait for the reply
+		while(!messageList.containsKey(id)) {
+			try {
+				Thread.sleep(50);
+			} catch (InterruptedException e) {
+			}
+
+			// Quit if the game window has closed
+			if (!GameState.getRunningState())
+				return UnitType.undefined;
+		}
+
+		result = messageList.get(id);
+		if (result == null) // Could happen if the game window had closed
+			return UnitType.undefined;
+		messageList.put(id, null);
+		
+		return (UnitType) result.get("type");	
+		
+	}
+	
+	public void dealDamage(int x, int y, int damage) {
+		/* Create a new message, notifying the board
+		 * that a unit has been dealt damage.
+		 */
+		int id;
+		Message damageMessage;
+		synchronized (this) {
+			id = localMessageCounter++;
+		
+			damageMessage = new Message();
+			damageMessage.put("request", MessageRequest.dealDamage);
+			damageMessage.put("x", x);
+			damageMessage.put("y", y);
+			damageMessage.put("damage", damage);
+			damageMessage.put("id", id);
+		}
+		sendServerMessage(damageMessage);
+	}
 
 	/**
 	 * Stop the running thread. This has to be called explicitly to make sure the program 
@@ -160,5 +304,11 @@ public abstract class SimpleUnit implements Serializable, IMessageReceivedHandle
 		} catch (InterruptedException ex) {
 			assert(false) : "Unit stopRunnerThread was interrupted";
 		}
+	}
+	
+	
+	// Disconnects the unit from the battlefield by exiting its run-state
+	public void disconnect() {
+		running = false;
 	}
 }

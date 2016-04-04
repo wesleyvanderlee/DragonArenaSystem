@@ -5,8 +5,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import core.Message;
-import core.Socket;
+import RMI.Message;
 import core.exception.IDNotAssignedException;
 
 @SuppressWarnings("serial")

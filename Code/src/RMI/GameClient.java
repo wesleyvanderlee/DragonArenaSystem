@@ -17,7 +17,7 @@ public class GameClient implements Runnable{
 			this.serverRegister = LocateRegistry.getRegistry(SERVER_REGISTRY_HOST, SERVER_REGISTRY_PORT);
 			this.gameServer = (GameServerInterface) serverRegister.lookup(serverID);
 		} catch (Exception e) {
-			e.printStackTrace();
+			//e.printStackTrace();
 		}
 		this.ID = clientID;
 		this.runnerThread = new Thread(this);

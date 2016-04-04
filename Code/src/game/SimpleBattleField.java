@@ -1,47 +1,29 @@
 package game;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.net.ServerSocket;
-import java.net.Socket;
 import java.util.ArrayList;
 
-import RMI.Configuration;
-import units.Unit;
+import RMI.Message;
+import RMI.MessageRequest;
+import units.SimpleDragon;
+import units.SimplePlayer;
+import units.SimpleUnit;
+import units.Unit.UnitType;
 
-public class SimpleBattleField implements Runnable{
-	private Unit[][] map;
+public class SimpleBattleField{
+	private SimpleUnit[][] map;
 	public final static int MAP_WIDTH = 25;
 	public final static int MAP_HEIGHT = 25;
-	private ArrayList<Unit> units;
-	ServerSocket singleBattlefieldSocket;
-	Socket connection = null;
-	ObjectOutputStream out;
-	ObjectInputStream in;
-	int port;
+	private ArrayList<SimpleUnit> units;
 	boolean accept = false;
 	
-	public SimpleBattleField(int port) {
-		// Socket local = new LocalSocket();
-		// this.battlefieldID = ID;
+	public SimpleBattleField() {
 		synchronized (this) {
-			this.map = new Unit[MAP_WIDTH][MAP_HEIGHT];
-			// local.register(BattleField.battlefieldID);
-			// serverSocket = new SynchronizedSocket(local);
-			// serverSocket.addMessageReceivedHandler(this);
-			units = new ArrayList<Unit>();
-			this.port = port;
-
+			this.map = new SimpleUnit[MAP_WIDTH][MAP_HEIGHT];
+			units = new ArrayList<SimpleUnit>();
 		}
 	}
-
 	
-	public void onMessageRecieved(){
-		
-	}
-	
-	private boolean spawnUnit(Unit unit, int x, int y) {
+	private boolean spawnUnit(SimpleUnit unit, int x, int y) {
 		synchronized (this) {
 			if (map[x][y] != null)
 				return false;
@@ -53,7 +35,7 @@ public class SimpleBattleField implements Runnable{
 		return true;
 	}
 
-	private synchronized boolean putUnit(Unit unit, int x, int y) {
+	private synchronized boolean putUnit(SimpleUnit unit, int x, int y) {
 		if (map[x][y] != null)
 			return false;
 		map[x][y] = unit;
@@ -61,13 +43,13 @@ public class SimpleBattleField implements Runnable{
 		return true;
 	}
 
-	public Unit getUnit(int x, int y) {
+	public SimpleUnit getUnit(int x, int y) {
 		assert x >= 0 && x < map.length;
 		assert y >= 0 && x < map[0].length;
 		return map[x][y];
 	}
 
-	private synchronized boolean moveUnit(Unit unit, int newX, int newY) {
+	private synchronized boolean moveUnit(SimpleUnit unit, int newX, int newY) {
 		int prevX = unit.getX();
 		int prevY = unit.getY();
 
@@ -86,7 +68,7 @@ public class SimpleBattleField implements Runnable{
 	}
 
 	private synchronized void removeUnit(int x, int y) {
-		Unit unitToRemove = this.getUnit(x, y);
+		SimpleUnit unitToRemove = this.getUnit(x, y);
 		if (unitToRemove == null)
 			return; // There was no unit here to remove
 		map[x][y] = null;
@@ -96,40 +78,99 @@ public class SimpleBattleField implements Runnable{
 		
 	public synchronized void shutdown() {
 		// Remove all units from the battlefield and make them disconnect from the server
-		for (Unit unit : units) {
+		for (SimpleUnit unit : units) {
 			unit.disconnect();
 			unit.stopRunnerThread();
 		}
 	}
 
-
-	@Override
-	public void run() {
-		try {
-			if(!accept){
-				System.out.println("new battlefield a at: [" + port + "]");
-				singleBattlefieldSocket = new ServerSocket( port);
-								
-				connection = singleBattlefieldSocket.accept();
-				System.out.println("new battlefield b at: [" + port + "]");
-				out = new ObjectOutputStream(connection.getOutputStream());
-				out.flush();
-				in = new ObjectInputStream(connection.getInputStream());
-				accept = true;
-			}
-			String message = (String) in.readObject();
-			System.out.println("SimpleBattleField recieved message: " + message);
-			
-			
-		} catch (ClassNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-				
+	public Message onMessageReceived(Message msg) {
+		Message reply = null;
+		String origin = (String)msg.get("origin");
+		MessageRequest request = (MessageRequest)msg.get("request");
+		SimpleUnit unit;
 		
+		switch(request)
+		{
+			case spawnUnit:
+				this.spawnUnit((SimpleUnit)msg.get("unit"), (Integer)msg.get("x"), (Integer)msg.get("y"));
+				break;
+			case putUnit:
+				this.putUnit((SimpleUnit)msg.get("unit"), (Integer)msg.get("x"), (Integer)msg.get("y"));
+				break;
+			case getUnit:
+			{
+				reply = new Message();
+				int x = (Integer)msg.get("x");
+				int y = (Integer)msg.get("y");
+				/* Copy the id of the message so that the unit knows 
+				 * what message the battlefield responded to. 
+				 */
+				reply.put("id", msg.get("id"));
+				// Get the unit at the specific location
+				reply.put("unit", getUnit(x, y));
+				break;
+			}
+			case getType:
+			{
+				reply = new Message();
+				int x = (Integer)msg.get("x");
+				int y = (Integer)msg.get("y");
+				/* Copy the id of the message so that the unit knows 
+				 * what message the battlefield responded to. 
+				 */
+				reply.put("id", msg.get("id"));
+				if (getUnit(x, y) instanceof SimplePlayer)
+				{
+					reply.put("type", UnitType.player);
+					
+				}
+				else if (getUnit(x, y) instanceof SimpleDragon)
+				{
+					reply.put("type", UnitType.dragon);
+				}
+				else 
+				{
+					reply.put("type", UnitType.undefined);
+				}
+				break;
+			}
+			case dealDamage:
+			{
+				int x = (Integer)msg.get("x");
+				int y = (Integer)msg.get("y");
+				unit = this.getUnit(x, y);
+				if (unit != null)
+					unit.adjustHitPoints( -(Integer)msg.get("damage") );
+				/* Copy the id of the message so that the unit knows 
+				 * what message the battlefield responded to. 
+				 */
+				break;
+			}
+			case healDamage:
+			{
+				int x = (Integer)msg.get("x");
+				int y = (Integer)msg.get("y");
+				unit = this.getUnit(x, y);
+				if (unit != null)
+					unit.adjustHitPoints( (Integer)msg.get("healed") );
+				/* Copy the id of the message so that the unit knows 
+				 * what message the battlefield responded to. 
+				 */
+				break;
+			}
+			case moveUnit:
+				reply = new Message();
+				this.moveUnit((SimpleUnit)msg.get("unit"), (Integer)msg.get("x"), (Integer)msg.get("y"));
+				/* Copy the id of the message so that the unit knows 
+				 * what message the battlefield responded to. 
+				 */
+				reply.put("id", msg.get("id"));
+				break;
+			case removeUnit:
+				this.removeUnit((Integer)msg.get("x"), (Integer)msg.get("y"));
+				break;
+		}
+		return reply;
 	}
-
 }

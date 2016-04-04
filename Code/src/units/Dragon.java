@@ -40,11 +40,11 @@ public class Dragon extends Unit implements Runnable, Serializable {
 	 * @throws IOException 
 	 *
 	 */
-	public Dragon(int x, int y) throws IOException {
+	public Dragon(int x, int y, BattleField battlefield) throws IOException {
 		/* Spawn the dragon with a random number of hitpoints between
 		 * 50..100 and 5..20 attackpoints. */
-		super((int)(Math.random() * (MAX_HITPOINTS - MIN_HITPOINTS) + MIN_HITPOINTS), (int)(Math.random() * (MAX_ATTACKPOINTS - MIN_ATTACKPOINTS) + MIN_ATTACKPOINTS));
-		
+		super((int)(Math.random() * (MAX_HITPOINTS - MIN_HITPOINTS) + MIN_HITPOINTS), (int)(Math.random() * (MAX_ATTACKPOINTS - MIN_ATTACKPOINTS) + MIN_ATTACKPOINTS), battlefield);
+
 		/* Create a random delay */
 		timeBetweenTurns = (int)(Math.random() * (MAX_TIME_BETWEEN_TURNS - MIN_TIME_BETWEEN_TURNS)) + MIN_TIME_BETWEEN_TURNS;
 
@@ -69,9 +69,8 @@ public class Dragon extends Unit implements Runnable, Serializable {
 	@SuppressWarnings("static-access")
 	public void run() 
 	{
-//		System.out.println("Dragon thread running");
+		System.out.println("Dragon thread running on port:");
 		ArrayList <Direction> adjacentPlayers = new ArrayList<Direction> ();
-		
 		this.running = true;
 
 		while(GameState.getRunningState() && this.running) 
