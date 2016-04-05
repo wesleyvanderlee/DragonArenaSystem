@@ -1,28 +1,29 @@
 package game;
 
-import java.awt.Color;
 import java.io.IOException;
+import java.io.Serializable;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 
-import javax.swing.text.html.StyleSheet;
-
 import RMI.Message;
 import RMI.MessageRequest;
-import units.SimpleDragon;
-import units.SimplePlayer;
 import units.SimpleUnit;
-import units.Unit.UnitType;
+import units.SimpleUnit.UnitType;
 
-public class SimpleBattleField extends UnicastRemoteObject implements SimpleBattleFieldInterface{
+public class SimpleBattleField extends UnicastRemoteObject implements SimpleBattleFieldInterface, Serializable{
 	private SimpleUnit[][] map;
+	private UnitType[][] map2;
 	public final static int MAP_WIDTH = 25;
-	public final static int MAP_HEIGHT = 25;
+	public final static int MAP_HEIGHT = 25;	
 	private ArrayList<SimpleUnit> units;
 	boolean accept = false;
+	public static SimpleBattleField battlefield;
+	
 	public SimpleBattleField()throws IOException {
 		synchronized (this) {
 			this.map = new SimpleUnit[MAP_WIDTH][MAP_HEIGHT];
+			this.map2 = new UnitType[MAP_WIDTH][MAP_HEIGHT];
+
 			units = new ArrayList<SimpleUnit>();
 		}
 	}
@@ -32,23 +33,41 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 		return this;
 	}
 	
-	private boolean spawnUnit(SimpleUnit unit, int x, int y) {
+	public static SimpleBattleField getBattleField2()
+	{
+		if (battlefield == null)
+			try {
+				battlefield = new SimpleBattleField();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		return battlefield;
+	}
+	public ArrayList<SimpleUnit> getUnits() throws Exception 
+	{
+		return units;
+	}
+	
+	private boolean spawnUnit(SimpleUnit unit, int x, int y, UnitType type) {
 		synchronized (this) {
 			if (map[x][y] != null)
 				return false;
 
 			map[x][y] = unit;
+			map2[x][y] = type;
 			unit.setPosition(x, y);
 		}
 		units.add(unit);
 		return true;
 	}
 
-	private synchronized boolean putUnit(SimpleUnit unit, int x, int y) {
-		if (map[x][y] != null)
-			return false;
+	private boolean putUnit(SimpleUnit unit, int x, int y, UnitType type) {
+
+		//unit.setPosition(x, y);
 		map[x][y] = unit;
-		unit.setPosition(x, y);
+		map2[x][y] = type;
+		
 		return true;
 	}
 
@@ -57,42 +76,47 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 		assert y >= 0 && x < map[0].length;
 		return map[x][y];
 	}
+	
+	public UnitType getUnitType(int x, int y) {
+		assert x >= 0 && x < map.length;
+		assert y >= 0 && x < map[0].length;
+		return map2[x][y];
+	}
 
-	private synchronized boolean moveUnit(SimpleUnit unit, int newX, int newY) {
+	private boolean moveUnit(SimpleUnit unit, int newX, int newY, UnitType type) {
 		int prevX = unit.getX();
 		int prevY = unit.getY();
 
 		if (unit.getHitPoints() <= 0)
 			return false;
-
 		if (newX >= 0 && newX < BattleField.MAP_WIDTH)
+		{
 			if (newY >= 0 && newY < BattleField.MAP_HEIGHT)
-				if (map[newX][newY] == null) {
-					if (putUnit(unit, newX, newY)) {
+			{
+				if (map[newX][newY] == null) 
+				{
+					if (putUnit(unit, newX, newY, type))
+					{
 						map[prevX][prevY] = null;
+						map2[prevX][prevY] = null;
 						return true;
 					}
 				}
+			}
+		}
 		return false;
 	}
 
-	private synchronized void removeUnit(int x, int y) {
+	private void removeUnit(int x, int y) {
 		SimpleUnit unitToRemove = this.getUnit(x, y);
 		if (unitToRemove == null)
 			return; // There was no unit here to remove
 		map[x][y] = null;
+		map2[x][y] = null;
 		unitToRemove.disconnect();
 		units.remove(unitToRemove);
 	}
-		
-	public synchronized void shutdown() {
-		// Remove all units from the battlefield and make them disconnect from the server
-		for (SimpleUnit unit : units) {
-			unit.disconnect();
-			unit.stopRunnerThread();
-		}
-	}
-
+	
 	public Message onMessageReceived(Message msg) {
 		Message reply = null;
 		String origin = (String)msg.get("origin");
@@ -102,10 +126,10 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 		switch(request)
 		{
 			case spawnUnit:
-				this.spawnUnit((SimpleUnit)msg.get("unit"), (Integer)msg.get("x"), (Integer)msg.get("y"));
+				this.spawnUnit((SimpleUnit)msg.get("unit"), (Integer)msg.get("x"), (Integer)msg.get("y"), (UnitType)msg.get("type"));
 				break;
 			case putUnit:
-				this.putUnit((SimpleUnit)msg.get("unit"), (Integer)msg.get("x"), (Integer)msg.get("y"));
+				this.putUnit((SimpleUnit)msg.get("unit"), (Integer)msg.get("x"), (Integer)msg.get("y"), (UnitType)msg.get("type"));
 				break;
 			case getUnit:
 			{
@@ -129,12 +153,12 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 				 * what message the battlefield responded to. 
 				 */
 				reply.put("id", msg.get("id"));
-				if (getUnit(x, y) instanceof SimplePlayer)
+				if (getUnitType(x, y) == UnitType.player)
 				{
 					reply.put("type", UnitType.player);
 					
 				}
-				else if (getUnit(x, y) instanceof SimpleDragon)
+				else if (getUnitType(x, y)== UnitType.dragon)
 				{
 					reply.put("type", UnitType.dragon);
 				}
@@ -170,7 +194,7 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 			}
 			case moveUnit:
 				reply = new Message();
-				this.moveUnit((SimpleUnit)msg.get("unit"), (Integer)msg.get("x"), (Integer)msg.get("y"));
+				this.moveUnit((SimpleUnit) msg.get("unit"), (Integer)msg.get("x"), (Integer)msg.get("y"), (UnitType)msg.get("type"));
 				/* Copy the id of the message so that the unit knows 
 				 * what message the battlefield responded to. 
 				 */
@@ -200,7 +224,8 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 	public String battleFieldString()throws Exception
 	{
 		String string="";
-		int count= 0;
+		int count= 1;
+		int newCount=0;
 		string += "  1 |2 |3 |4 |5 |6 |7 |8 |9 |10|11|12|13|14|15|16|17|18|19|20|21|22|23|24|25|\n";
 		for(int r = 0; r < map.length; r++)
 		{
@@ -208,25 +233,27 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 			for(int c = 0; c < map.length; c++)
 			{
 				string += "|";
-				if(map[r][c] == null)
+				if(map2[r][c] == null)
 				{
 					string += "  ";
 				}
-				else if(map[r][c] instanceof SimplePlayer)
+				else if(map2[r][c] == UnitType.player)
 				{
-					
+					newCount++;
 					string += "P ";
 				}
-				else if(map[r][c] instanceof SimpleDragon)
+				else if(map2[r][c] == UnitType.dragon)
 				{	
 					string += "D ";
 				}
-				
 			}
 			count++;
 			string += "|\n";
 			string += "  ----------------------------------------------------------------------------\n";
+			
 		}
+		string += newCount +"\n";
+		string += units.size() +"\n";
 		return string;
 		
 	}

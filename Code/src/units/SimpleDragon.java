@@ -42,8 +42,7 @@ public class SimpleDragon extends SimpleUnit implements Runnable, Serializable {
 	public static final int MIN_ATTACKPOINTS = 5;
 	public static final int MAX_ATTACKPOINTS = 20;
 	public boolean connected = false; 
-	
-	Thread runnerThread;
+	static final UnitType type = UnitType.dragon;
 	/**
 	 * Spawn a new dragon, initialize the 
 	 * reaction speed 
@@ -58,13 +57,10 @@ public class SimpleDragon extends SimpleUnit implements Runnable, Serializable {
 		/* Create a random delay */
 		timeBetweenTurns = (int)(Math.random() * (MAX_TIME_BETWEEN_TURNS - MIN_TIME_BETWEEN_TURNS)) + MIN_TIME_BETWEEN_TURNS;
 
-		if (!spawn(x, y))
+		if (!spawn(x, y, type))
 		{
 			return; // We could not spawn on the battlefield
 		}
-		
-		this.runnerThread = new Thread(this);
-		this.runnerThread.start();
 	}
 	@Override
 	public void run() 
@@ -130,5 +126,8 @@ public class SimpleDragon extends SimpleUnit implements Runnable, Serializable {
 	public void onMessageReceived(Message message) {
 		// TODO Auto-generated method stub
 		
+	}
+	public UnitType getType() {
+		return type;
 	}
 }

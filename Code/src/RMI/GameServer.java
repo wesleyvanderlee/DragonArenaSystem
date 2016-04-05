@@ -12,9 +12,13 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import game.BattleField;
 import game.SimpleBattleField;
+import presentation.BattleFieldViewer;
 import units.SimpleDragon;
+import units.SimplePlayer;
+import units.SimpleUnit;
+import units.SimpleUnit.UnitType;
 
-public class GameServer extends UnicastRemoteObject implements GameServerInterface, Runnable {
+public class GameServer extends UnicastRemoteObject implements GameServerInterface, Runnable{
 	/**
 	 * 
 	 */
@@ -26,12 +30,11 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	SimpleBattleField battlefield;
 	Thread battleFieldThread;
 	ArrayList<GameServerInterface> gameServers;
-	Thread runnerThread;
 	ArrayList<String> gameClients;
 	int initTime;
 	GameServerInterface oldestGameServer;
 	private ReentrantLock lock = new ReentrantLock();
-
+	boolean first = true;
 	public GameServer(String serverID, String SERVER_HOST, int SERVER_REGISTRY_PORT) throws IOException {
 		super();
 		this.gameClients = new ArrayList<String>();
@@ -49,8 +52,6 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 			lock.unlock();
 		}
 
-		this.runnerThread = new Thread(this);
-		this.runnerThread.start();
 	}
 
 	public int getRank(){
@@ -92,11 +93,15 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 
 	public void initMe(GameServerInterface gs) throws RemoteException {
 		this.oldestGameServer = gs;
+		if(first)
+		{
 		this.makeDragons();
+		first = false;
+		}
 
 		
 	}
-
+	
 	private void makeDragons() {
 		try {
 			if (oldestGameServer.getID().equals(this.getID())) {
@@ -122,7 +127,9 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 					message.put("serverRequest", MessageRequest.addDragon);
 					message.put("ID", this.ID);
 					message.put("x", finalX);
+					message.put("type", UnitType.dragon);
 					message.put("y", finalY);
+					
 					serverBroadCast(message);
 				}
 			}
@@ -134,7 +141,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	}
 	
 	public void serverBroadCast(Message message){
-		for (int i = 0; i < Configuration.SERVER_IDS.length; i++) 
+		for (int i = 0; i < 1; i++) 
 		{
 			try {
 				Registry otherRegistry = LocateRegistry.getRegistry(Configuration.SERVER_HOSTS[i],
@@ -145,7 +152,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 			} 
 			catch (Exception e) 
 			{
-				//e.printStackTrace();
+				e.printStackTrace();
 			}
 		}
 	}
@@ -187,7 +194,6 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		this.gameClients.add(clientID);
 		return true;
 	}
-	
 	public Message onMessageReceived(Message msg) throws Exception {
 		MessageRequest serverRequest = (MessageRequest) msg.get("serverRequest");
 		Message reply = null;
@@ -197,6 +203,13 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 			break;
 		case toBattleField:
 			reply = battlefield.onMessageReceived(msg);
+//			if( true == (boolean) msg.get("serverUpdate") && msg.get("unit") instanceof SimplePlayer)
+//			{
+//				Message updateBattleField = new Message();
+//				updateBattleField.put("battlefield", this.battlefield);
+//				updateBattleField.put("serverRequest", MessageRequest.updatebattlefield);
+//				serverBroadCast(updateBattleField);
+//			}
 			break;
 		default:
 			System.out.println("No message type found");

@@ -11,7 +11,7 @@ public class Core {
 
 		Logger.init();
 
-		for (int i = 0; i < 5; i++) {
+		for (int i = 0; i < 1; i++) {
 			final int index = i;
 			new Thread(new Runnable() {
 				public void run() {
@@ -26,9 +26,9 @@ public class Core {
 			}).start();
 			Logger.log("New server at " + Configuration.SERVER_HOSTS[i] + ":" + Configuration.SERVER_REGISTRY_PORTS[i]);
 		}
-		for (int i = 0; i < 20; i++) {
+		for (int i = 0; i < 10; i++) {
 			final int clientID = i;
-			final int index = i % 5;
+			final int index = 0;
 			new Thread(new Runnable() {
 				public void run() {
 					try {

@@ -1,5 +1,6 @@
 package presentation;
 
+
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Frame;
@@ -8,19 +9,22 @@ import java.awt.Image;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.IOException;
+import java.rmi.AccessException;
+import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 
 import javax.swing.JPanel;
 
+import RMI.GameServerInterface;
 import game.BattleField;
 import game.GameState;
 import game.SimpleBattleField;
 import game.SimpleBattleFieldInterface;
-import units.Dragon;
-import units.Player;
 import units.SimpleDragon;
 import units.SimplePlayer;
 import units.SimpleUnit;
-import units.Unit;
 
 /**
  * Create an viewer, which runs in a seperate thread and
@@ -39,19 +43,34 @@ public class BattleFieldViewer extends JPanel implements Runnable {
 	/* Dimension of the stored image */
 	private int bufferWidth;
 	private int bufferHeight;
+	public SimpleBattleFieldInterface battle;
+	
+	GameServerInterface gameServer;
+	int SERVER_REGISTRY_PORT;
+	String SERVER_REGISTRY_HOST;
+	Registry serverRegister;
+	String serverID;
 
 	/* The thread that is used to make the battlefield run in a separate thread.
 	 * We need to remember this thread to make sure that Java exits cleanly.
 	 * (See stopRunnerThread())
 	 */
 	private Thread runnerThread;
-	private SimpleBattleField battlefield;
 
 	/**
 	 * Create a battlefield viewer in 
 	 * a new thread. 
 	 */
-	public BattleFieldViewer(SimpleBattleFieldInterface battlefield) {
+	public BattleFieldViewer(String serverID, String SERVER_REGISTRY_HOST, int SERVER_REGISTRY_PORT) {
+		try {
+			this.serverID = serverID;
+			this.SERVER_REGISTRY_HOST = SERVER_REGISTRY_HOST;
+			this.SERVER_REGISTRY_PORT = SERVER_REGISTRY_PORT;
+			this.serverRegister = LocateRegistry.getRegistry(SERVER_REGISTRY_HOST, SERVER_REGISTRY_PORT);
+			this.gameServer = (GameServerInterface) serverRegister.lookup(serverID);
+		} catch (Exception e) {
+			// e.printStackTrace();
+		}
 		doubleBufferGraphics = null;
 		runnerThread = new Thread(this);
 		runnerThread.start();
@@ -72,18 +91,12 @@ public class BattleFieldViewer extends JPanel implements Runnable {
 	 * for dragons and a blue one for players. 
 	 */
 	public void paint(Graphics g) {
-		SimpleUnit u;
+		SimpleUnit u = null;
 		double x = 0, y = 0;
 		double xRatio = (double)this.getWidth() / (double)BattleField.MAP_WIDTH;
 		double yRatio = (double)this.getHeight() / (double)BattleField.MAP_HEIGHT;
 		double filler;
-		SimpleBattleField bf = null;
-		try {
-			bf = battlefield.getBattleField();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		SimpleBattleFieldInterface bf = (SimpleBattleFieldInterface) battle;
 
 		/* Possibly adjust the double buffer */
 		if(bufferWidth != getSize().width 
@@ -100,7 +113,12 @@ public class BattleFieldViewer extends JPanel implements Runnable {
 		/* Draw the field, rectangle-wise */
 		for(int i = 0; i < BattleField.MAP_WIDTH; i++, x += xRatio, y = 0)
 			for(int j = 0; j < BattleField.MAP_HEIGHT; j++, y += yRatio) {
-				u = bf.getUnit(i, j);
+				try {
+					u = bf.getUnit(i, j);
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 				if (u == null) continue; // Nothing to draw in this sector
 
 				if (u instanceof SimpleDragon)
@@ -154,6 +172,12 @@ public class BattleFieldViewer extends JPanel implements Runnable {
 			/* Keep the system running on a nice speed */
 			try {
 				Thread.sleep((int)(1000 * GameState.GAME_SPEED));
+				try {
+					battle= (SimpleBattleFieldInterface) serverRegister.lookup(gameServer.getBattleField());
+				} catch (Exception e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
 				invalidate();
 				repaint();
 			} catch (InterruptedException e) {

@@ -6,6 +6,7 @@ import java.io.Serializable;
 import RMI.Message;
 import game.BattleField;
 import game.GameState;
+import units.SimpleUnit.UnitType;
 
 /**
  * A Player is, as the name implies, a playing 
@@ -34,6 +35,7 @@ public class SimplePlayer extends SimpleUnit implements Runnable, Serializable
 	public static final int MIN_ATTACKPOINTS = 1;
 	public static final int MAX_ATTACKPOINTS = 10;
 
+	static final UnitType type = UnitType.player;
 	/**
 	 * Create a player, initialize both 
 	 * the hit and the attackpoints. 
@@ -47,14 +49,13 @@ public class SimplePlayer extends SimpleUnit implements Runnable, Serializable
 		/* Create a random delay */
 		timeBetweenTurns = (int)(Math.random() * (MAX_TIME_BETWEEN_TURNS - MIN_TIME_BETWEEN_TURNS)) + MIN_TIME_BETWEEN_TURNS;
 
-		if (!spawn(x, y))
+
+		if (!spawn(x, y, type))
 			return; // We could not spawn on the battlefield
 
-		/* Create a new player thread */
-		//new Thread(this).start();
-		runnerThread = new Thread(this);
-		runnerThread.start();
 	}
+	
+
 
 	/**
 	 * Roleplay the player. Make the player act once in a while,
@@ -71,13 +72,12 @@ public class SimplePlayer extends SimpleUnit implements Runnable, Serializable
 		Direction direction;
 		UnitType adjacentUnitType = UnitType.undefined;
 		int targetX = 0, targetY = 0;
-		
 		this.running = true;
 
 		while(GameState.getRunningState() && this.running) {
 			try {			
 				/* Sleep while the player is considering its next move */
-				Thread.currentThread().sleep((int)(timeBetweenTurns * 500 * GameState.GAME_SPEED));
+				Thread.currentThread().sleep((int)(timeBetweenTurns * 5000 * GameState.GAME_SPEED));
 
 				/* Stop if the player runs out of hitpoints */
 				if (getHitPoints() <= 0)
@@ -86,7 +86,6 @@ public class SimplePlayer extends SimpleUnit implements Runnable, Serializable
 				// Randomly choose one of the four wind directions to move to if there are no units present
 				direction = Direction.values()[ (int)(Direction.values().length * Math.random()) ];
 				adjacentUnitType = UnitType.undefined;
-
 				switch (direction) {
 					case up:
 						if (this.getY() <= 0)
@@ -121,7 +120,6 @@ public class SimplePlayer extends SimpleUnit implements Runnable, Serializable
 						targetY = this.getY();
 						break;
 				}
-
 				// Get what unit lies in the target square
 				adjacentUnitType = this.getType(targetX, targetY);
 				
@@ -129,7 +127,7 @@ public class SimplePlayer extends SimpleUnit implements Runnable, Serializable
 				{
 					case undefined:
 						// There is no unit in the square. Move the player to this square
-						this.moveUnit(targetX, targetY);
+						this.moveUnit(targetX, targetY,type);
 						break;
 					case player:
 						// There is a player in the square, attempt a healing
@@ -151,5 +149,7 @@ public class SimplePlayer extends SimpleUnit implements Runnable, Serializable
 		// TODO Auto-generated method stub
 		
 	}
-
+	public UnitType getType() {
+		return type;
+	}
 }
