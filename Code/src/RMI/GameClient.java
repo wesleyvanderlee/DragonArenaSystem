@@ -1,17 +1,13 @@
 package RMI;
 
-import java.io.IOException;
-import java.io.Serializable;
 import java.rmi.AccessException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 
-import game.BattleField;
 import game.SimpleBattleFieldInterface;
 import presentation.BattleFieldViewer;
-import units.SimpleDragon;
 import units.SimplePlayer;
 
 public class GameClient implements Runnable {
@@ -24,8 +20,8 @@ public class GameClient implements Runnable {
 	transient Thread runnerThread;
 	SimpleBattleFieldInterface battlefield;
 	boolean first = true;
-	public GameClient(int clientID, String serverID, String SERVER_REGISTRY_HOST, int SERVER_REGISTRY_PORT) {
 
+	public GameClient(int clientID, String serverID, String SERVER_REGISTRY_HOST, int SERVER_REGISTRY_PORT) {
 		try {
 			this.serverID = serverID;
 			this.SERVER_REGISTRY_HOST = SERVER_REGISTRY_HOST;
@@ -33,7 +29,7 @@ public class GameClient implements Runnable {
 			this.serverRegister = LocateRegistry.getRegistry(SERVER_REGISTRY_HOST, SERVER_REGISTRY_PORT);
 			this.gameServer = (GameServerInterface) serverRegister.lookup(serverID);
 		} catch (Exception e) {
-			// e.printStackTrace();
+			 e.printStackTrace();
 		}
 		this.ID = clientID;
 		this.runnerThread = new Thread(this);
@@ -54,7 +50,6 @@ public class GameClient implements Runnable {
 		try {
 			int[] values = new int[2];
 			values = (int[]) battlefield.getRandomLocation();
-			System.out.println("AAAAAAAAAA");
 			player = new SimplePlayer(values[0], values[1], serverID, SERVER_REGISTRY_HOST, SERVER_REGISTRY_PORT);
 			Thread t = new Thread(player);
 			t.start();
@@ -66,37 +61,24 @@ public class GameClient implements Runnable {
 	public void run() {
 		try {
 			battlefield = (SimpleBattleFieldInterface) serverRegister.lookup(gameServer.getBattleField());
-		} catch (AccessException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		} catch (RemoteException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		} catch (NotBoundException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
 		} catch (Exception e1) {
-			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
-		while(first)
-		{
+		while (first) {
 			initPlayer();
-			new Thread(new Runnable() 
-			{
-				public void run() 
-				{
+			new Thread(new Runnable() {
+				public void run() {
 					new BattleFieldViewer(serverID, SERVER_REGISTRY_HOST, SERVER_REGISTRY_PORT);
 				}
 			}).start();
-			first= false;
+			first = false;
 		}
-		
+
 		while (true) {
 			try {
-				
-				//System.out.println((String) battlefield.battleFieldString());
-				
+
+				// stay-alive
+
 			} catch (Exception e) {
 				e.printStackTrace();
 			}

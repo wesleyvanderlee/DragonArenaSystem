@@ -18,7 +18,7 @@ import units.SimplePlayer;
 import units.SimpleUnit;
 import units.SimpleUnit.UnitType;
 
-public class GameServer extends UnicastRemoteObject implements GameServerInterface, Runnable{
+public class GameServer extends UnicastRemoteObject implements GameServerInterface, Runnable {
 	/**
 	 * 
 	 */
@@ -35,6 +35,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	GameServerInterface oldestGameServer;
 	private ReentrantLock lock = new ReentrantLock();
 	boolean first = true;
+
 	public GameServer(String serverID, String SERVER_HOST, int SERVER_REGISTRY_PORT) throws IOException {
 		super();
 		this.gameClients = new ArrayList<String>();
@@ -54,36 +55,32 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 
 	}
 
-	public int getRank(){
-		return Integer.parseInt(ID.substring(ID.length()-1,ID.length()));
+	public int getRank() {
+		return Integer.parseInt(ID.substring(ID.length() - 1, ID.length()));
 	}
-	
+
 	public String getID() {
 		return this.ID;
 	}
 
 	public synchronized void sync() {
-		if (!this.ID.equals(Configuration.SERVER_IDS[0]))
-			return;
+//		if (!this.ID.equals(Configuration.SERVER_IDS[0]))
+//			return;
 		int covered = 0;
-		while (covered < Configuration.SERVER_IDS.length-1) {
+		while (covered < Configuration.SERVER_IDS.length - 1) {
 			for (int i = 0; i < Configuration.SERVER_IDS.length; i++) {
-				try 
-				{
-					
+				try {
+
 					Registry otherRegistry = LocateRegistry.getRegistry(Configuration.SERVER_HOSTS[i],
 							Configuration.SERVER_REGISTRY_PORTS[i]);
 					GameServerInterface otherServer = (GameServerInterface) otherRegistry
 							.lookup(Configuration.SERVER_IDS[i]);
-					otherServer.initMe(this);
+					otherServer.setOldest(this);
 					covered++;
-				} 
-				catch (Exception e) 
-				{
+				} catch (Exception e) {
 					try {
-						initMe(this);
-					} catch (RemoteException e1) {
-						// TODO Auto-generated catch block
+//						setOldest(this);
+					} catch (Exception e1) {
 						e1.printStackTrace();
 					}
 				}
@@ -91,23 +88,20 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		}
 	}
 
-	public void initMe(GameServerInterface gs) throws RemoteException {
+	public void setOldest(GameServerInterface gs) throws RemoteException {
 		this.oldestGameServer = gs;
-		if(first)
-		{
-		this.makeDragons();
-		first = false;
+		if (first) {
+			this.makeDragons();
+			first = false;
 		}
 
-		
 	}
-	
+
 	private void makeDragons() {
 		try {
 			if (oldestGameServer.getID().equals(this.getID())) {
 				/* All the dragons connect */
-				for (int i = 0; i < Configuration.DRAGON_COUNT; i++) 
-				{
+				for (int i = 0; i < Configuration.DRAGON_COUNT; i++) {
 					/* Try picking a random spot */
 					int x, y, attempt = 0;
 					do {
@@ -129,29 +123,29 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 					message.put("x", finalX);
 					message.put("type", UnitType.dragon);
 					message.put("y", finalY);
-					
+
 					serverBroadCast(message);
 				}
 			}
-		} 
-		catch (Exception e) 
-		{
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
+
 	
-	public void serverBroadCast(Message message){
-		for (int i = 0; i < 1; i++) 
-		{
+	/**
+	 * Sends a message to all other GameServers in a meshstyle 
+	 * @param message
+	 */
+	public void serverBroadCast(Message message) {
+		for (int i = 0; i < 1; i++) {
 			try {
 				Registry otherRegistry = LocateRegistry.getRegistry(Configuration.SERVER_HOSTS[i],
 						Configuration.SERVER_REGISTRY_PORTS[i]);
 				GameServerInterface otherServer = (GameServerInterface) otherRegistry
 						.lookup(Configuration.SERVER_IDS[i]);
 				otherServer.onMessageReceived(message);
-			} 
-			catch (Exception e) 
-			{
+			} catch (Exception e) {
 				e.printStackTrace();
 			}
 		}
@@ -162,20 +156,25 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		SimpleDragon dragon;
 		try {
 			dragon = new SimpleDragon(x, y, ID, HOST, SERVER_REGISTRY_PORT);
-			Thread t = new Thread (dragon);
+			Thread t = new Thread(dragon);
 			t.start();
-			
-		} catch (IOException e)
-		{
+
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
 
+	/**
+	 * Sets or retrieves this GameServer's serverRegistry which is a registry containing the locations of all other Clients.
+	 * This method is called at initialization of the GameServer
+	 */
 	private void register() {
 		try {
+			// First try to create a new registry, might fail if the port already contains a registry
 			severRegistry = LocateRegistry.createRegistry(SERVER_REGISTRY_PORT);
 		} catch (Exception e) {
 			try {
+				// If the PORT is already taken, then a server registry is set, thus that registry should be retrieved.
 				severRegistry = LocateRegistry.getRegistry(SERVER_REGISTRY_PORT);
 			} catch (RemoteException e1) {
 				e1.printStackTrace();
@@ -184,7 +183,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 			try {
 				severRegistry.bind(this.ID, this);
 			} catch (Exception e) {
-				//e.printStackTrace();
+				 e.printStackTrace();
 			}
 		}
 
@@ -194,25 +193,28 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		this.gameClients.add(clientID);
 		return true;
 	}
+
 	public Message onMessageReceived(Message msg) throws Exception {
 		MessageRequest serverRequest = (MessageRequest) msg.get("serverRequest");
 		Message reply = null;
 		switch (serverRequest) {
 		case addDragon:
-			initDragon((Integer)msg.get("x"),(Integer)msg.get("y"));
+			initDragon((Integer) msg.get("x"), (Integer) msg.get("y"));
 			break;
 		case toBattleField:
 			reply = battlefield.onMessageReceived(msg);
-//			if( true == (boolean) msg.get("serverUpdate") && msg.get("unit") instanceof SimplePlayer)
-//			{
-//				Message updateBattleField = new Message();
-//				updateBattleField.put("battlefield", this.battlefield);
-//				updateBattleField.put("serverRequest", MessageRequest.updatebattlefield);
-//				serverBroadCast(updateBattleField);
-//			}
+			// if( true == (boolean) msg.get("serverUpdate") && msg.get("unit")
+			// instanceof SimplePlayer)
+			// {
+			// Message updateBattleField = new Message();
+			// updateBattleField.put("battlefield", this.battlefield);
+			// updateBattleField.put("serverRequest",
+			// MessageRequest.updatebattlefield);
+			// serverBroadCast(updateBattleField);
+			// }
 			break;
 		default:
-			System.out.println("No message type found");
+			// No message type found 
 			break;
 		}
 		return reply;
@@ -227,9 +229,8 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	}
 
 	@Override
-	public void run() 
-	{
-
+	public void run() {
+		//stay-alive
 	}
 
 	@Override
@@ -238,22 +239,14 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	}
 
 	@Override
-	public String getBattleField()
-	{
+	public String getBattleField() {
 		try {
-			severRegistry.rebind("BattleField", this.battlefield );
+			severRegistry.rebind("BattleField", this.battlefield);
 		} catch (RemoteException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return "BattleField";
 	}
 
-	// GAME ACTIONS
-	
-	
-	
-	
-	
-	
+
 }

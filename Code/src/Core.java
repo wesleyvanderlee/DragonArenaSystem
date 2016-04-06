@@ -1,6 +1,5 @@
 import java.io.IOException;
 
-import Log.Logger;
 import RMI.Configuration;
 import RMI.GameClient;
 import RMI.GameServer;
@@ -8,8 +7,6 @@ import RMI.GameServer;
 public class Core {
 
 	public static void main(String[] args) throws Exception {
-
-		Logger.init();
 
 		for (int i = 0; i < 1; i++) {
 			final int index = i;
@@ -24,7 +21,6 @@ public class Core {
 					}
 				}
 			}).start();
-			Logger.log("New server at " + Configuration.SERVER_HOSTS[i] + ":" + Configuration.SERVER_REGISTRY_PORTS[i]);
 		}
 		for (int i = 0; i < 10; i++) {
 			final int clientID = i;
@@ -41,8 +37,5 @@ public class Core {
 				}
 			}).start();
 		}
-		Logger.log(Logger.Level.SEVR, "Finish main");
-
 	}
-
 }
