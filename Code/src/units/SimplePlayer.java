@@ -44,7 +44,7 @@ public class SimplePlayer extends SimpleUnit implements Runnable, Serializable
 	public SimplePlayer(int x, int y, String serverID, String SERVER_REGISTRY_HOST, int SERVER_REGISTRY_PORT) throws IOException 
 	{
 		/* Initialize the hitpoints and attackpoints */
-		super((int)(Math.random() * (MAX_HITPOINTS - MIN_HITPOINTS) + MIN_HITPOINTS), (int)(Math.random() * (MAX_ATTACKPOINTS - MIN_ATTACKPOINTS) + MIN_ATTACKPOINTS), serverID, SERVER_REGISTRY_HOST, SERVER_REGISTRY_PORT);
+		super(x,y,(int)(Math.random() * (MAX_HITPOINTS - MIN_HITPOINTS) + MIN_HITPOINTS), (int)(Math.random() * (MAX_ATTACKPOINTS - MIN_ATTACKPOINTS) + MIN_ATTACKPOINTS), serverID, SERVER_REGISTRY_HOST, SERVER_REGISTRY_PORT);
 
 		/* Create a random delay */
 		timeBetweenTurns = (int)(Math.random() * (MAX_TIME_BETWEEN_TURNS - MIN_TIME_BETWEEN_TURNS)) + MIN_TIME_BETWEEN_TURNS;
@@ -52,7 +52,6 @@ public class SimplePlayer extends SimpleUnit implements Runnable, Serializable
 
 		if (!spawn(x, y, type))
 			return; // We could not spawn on the battlefield
-
 	}
 	
 
@@ -81,7 +80,11 @@ public class SimplePlayer extends SimpleUnit implements Runnable, Serializable
 
 				/* Stop if the player runs out of hitpoints */
 				if (getHitPoints() <= 0)
+				{
+					System.out.println("die");
+					Thread.interrupted();
 					break;
+				}
 
 				// Randomly choose one of the four wind directions to move to if there are no units present
 				direction = Direction.values()[ (int)(Direction.values().length * Math.random()) ];
@@ -142,6 +145,7 @@ public class SimplePlayer extends SimpleUnit implements Runnable, Serializable
 				e.printStackTrace();
 			}
 		}
+		
 	}
 
 	@Override

@@ -52,7 +52,7 @@ public class SimpleDragon extends SimpleUnit implements Runnable, Serializable {
 	public SimpleDragon(int x, int y, String serverID, String SERVER_REGISTRY_HOST, int SERVER_REGISTRY_PORT) throws IOException {
 		/* Spawn the dragon with a random number of hitpoints between
 		 * 50..100 and 5..20 attackpoints. */
-		super((int)(Math.random() * (MAX_HITPOINTS - MIN_HITPOINTS) + MIN_HITPOINTS), (int)(Math.random() * (MAX_ATTACKPOINTS - MIN_ATTACKPOINTS) + MIN_ATTACKPOINTS), serverID, SERVER_REGISTRY_HOST, SERVER_REGISTRY_PORT);
+		super(x,y,(int)(Math.random() * (MAX_HITPOINTS - MIN_HITPOINTS) + MIN_HITPOINTS), (int)(Math.random() * (MAX_ATTACKPOINTS - MIN_ATTACKPOINTS) + MIN_ATTACKPOINTS), serverID, SERVER_REGISTRY_HOST, SERVER_REGISTRY_PORT);
 
 		/* Create a random delay */
 		timeBetweenTurns = (int)(Math.random() * (MAX_TIME_BETWEEN_TURNS - MIN_TIME_BETWEEN_TURNS)) + MIN_TIME_BETWEEN_TURNS;
@@ -113,7 +113,6 @@ public class SimpleDragon extends SimpleUnit implements Runnable, Serializable {
 						this.dealDamage( getX() - 1, getY(), this.getAttackPoints() );
 						break;
 				}
-				
 			} 
 			catch (InterruptedException e) 
 			{

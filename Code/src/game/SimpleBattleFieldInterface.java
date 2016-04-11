@@ -11,4 +11,7 @@ public interface SimpleBattleFieldInterface extends Remote {
 	public int[] getRandomLocation()throws Exception;
 	public ArrayList<SimpleUnit>  getUnits()throws Exception;
 	public SimpleUnit getUnit(int i, int j)throws Exception;
+	public SimpleUnit[][] getMap()throws Exception;
+	public void setMap(SimpleUnit[][] map) throws Exception;
+	public void setUnits(ArrayList<SimpleUnit> units) throws Exception;
 }

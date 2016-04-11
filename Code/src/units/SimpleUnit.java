@@ -60,9 +60,11 @@ public abstract class SimpleUnit implements Serializable, IMessageReceivedHandle
 		player, dragon, undefined,
 	};
 
+	protected Thread runnerThread;
 	GameServerInterface gameServer;
 	int SERVER_REGISTRY_PORT;
 	Registry serverRegister;
+
 	/**
 	 * Create a new unit and specify the number of hitpoints. Units hitpoints
 	 * are initialized to the maxHitPoints.
@@ -71,9 +73,10 @@ public abstract class SimpleUnit implements Serializable, IMessageReceivedHandle
 	 *            is the maximum health of this specific unit.
 	 * @throws IOException
 	 */
-	public SimpleUnit(int maxHealth, int attackPoints, String serverID, String SERVER_REGISTRY_HOST,
+	public SimpleUnit(int x, int y, int maxHealth, int attackPoints, String serverID, String SERVER_REGISTRY_HOST,
 			int SERVER_REGISTRY_PORT) throws IOException {
-
+		this.x = x;
+		this.y = y;
 		// Initialize the max health and health
 		hitPoints = maxHitPoints = maxHealth;
 
@@ -88,7 +91,7 @@ public abstract class SimpleUnit implements Serializable, IMessageReceivedHandle
 			// e.printStackTrace();
 		}
 	}
-	
+
 	public SimpleUnit() throws IOException {
 
 	}
@@ -101,16 +104,18 @@ public abstract class SimpleUnit implements Serializable, IMessageReceivedHandle
 	 *            is to be added to the hitpoint count.
 	 */
 	public synchronized void adjustHitPoints(int modifier) {
-		if (hitPoints <= 0)
+
+		if (hitPoints <= 0) {
+			removeUnit(x, y);
 			return;
-
+		}
 		hitPoints += modifier;
-
-		if (hitPoints > maxHitPoints)
+		if (hitPoints > maxHitPoints) {
 			hitPoints = maxHitPoints;
-
-		// if (hitPoints <= 0)
-		// removeUnit(x, y);
+		}
+		if (hitPoints <= 0) {
+			removeUnit(x, y);
+		}
 	}
 
 	/**
@@ -183,19 +188,29 @@ public abstract class SimpleUnit implements Serializable, IMessageReceivedHandle
 		 * spawned at the designated position.
 		 */
 		int id = localMessageCounter++;
-		Message spawnMessage = new Message();
+		Message spawnMessage = new Message(), result;;
 		spawnMessage.put("request", MessageRequest.spawnUnit);
 		spawnMessage.put("x", x);
 		spawnMessage.put("y", y);
 		spawnMessage.put("type", type);
 		spawnMessage.put("unit", this);
 		spawnMessage.put("id", id);
-		spawnMessage.put("serverUpdate", true);
 		sendServerMessage(spawnMessage);
 
-		// Wait for the unit to be placed
-		//getUnit(x, y);
-		//setPosition(x, y);
+		// Wait for the reply
+		while (!messageList.containsKey(id)) {
+			try {
+				Thread.sleep(50);
+			} catch (InterruptedException e) {
+			}
+
+			// Quit if the game window has closed
+			if (!GameState.getRunningState())
+				return false;
+		}
+
+		result = messageList.get(id);
+		messageList.put(id, null);
 		return true;
 	}
 
@@ -206,7 +221,6 @@ public abstract class SimpleUnit implements Serializable, IMessageReceivedHandle
 		getMessage.put("x", x);
 		getMessage.put("y", y);
 		getMessage.put("id", id);
-
 		// Send the getUnit message
 		sendServerMessage(getMessage);
 
@@ -232,13 +246,11 @@ public abstract class SimpleUnit implements Serializable, IMessageReceivedHandle
 		message.put("serverRequest", MessageRequest.toBattleField);
 		try {
 			reply = gameServer.onMessageReceived(message);
-			
-			if(reply != null)
-			{
-				messageList.put((Integer)message.get("id"), reply);
+
+			if (reply != null) {
+				messageList.put((Integer) message.get("id"), reply);
 			}
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
@@ -252,7 +264,6 @@ public abstract class SimpleUnit implements Serializable, IMessageReceivedHandle
 		moveMessage.put("y", y);
 		moveMessage.put("type", type);
 		moveMessage.put("id", id);
-		moveMessage.put("serverUpdate", true);
 		moveMessage.put("unit", this);
 		// Send the getUnit message
 		sendServerMessage(moveMessage);
@@ -281,7 +292,7 @@ public abstract class SimpleUnit implements Serializable, IMessageReceivedHandle
 		 * healed.
 		 */
 		int id;
-		Message healMessage;
+		Message healMessage, result;
 		synchronized (this) {
 			id = localMessageCounter++;
 
@@ -291,11 +302,50 @@ public abstract class SimpleUnit implements Serializable, IMessageReceivedHandle
 			healMessage.put("y", y);
 			healMessage.put("healed", healed);
 			healMessage.put("id", id);
-			healMessage.put("serverUpdate", true);
 		}
-
 		// Send a spawn message
 		sendServerMessage(healMessage);
+
+		// Wait for the reply
+		while (!messageList.containsKey(id)) {
+			try {
+				Thread.sleep(50);
+			} catch (InterruptedException e) {
+			}
+
+			// Quit if the game window has closed
+			if (!GameState.getRunningState())
+				return;
+		}
+
+		result = messageList.get(id);
+		messageList.put(id, null);
+	}
+
+	protected void removeUnit(int x, int y) {
+		Message removeMessage = new Message(), result;;
+		int id = localMessageCounter++;
+		removeMessage.put("request", MessageRequest.removeUnit);
+		removeMessage.put("x", x);
+		removeMessage.put("y", y);
+		removeMessage.put("id", id);
+		// Send the removeUnit message
+		sendServerMessage(removeMessage);
+
+		// Wait for the reply
+		while (!messageList.containsKey(id)) {
+			try {
+				Thread.sleep(50);
+			} catch (InterruptedException e) {
+			}
+
+			// Quit if the game window has closed
+			if (!GameState.getRunningState())
+				return;
+		}
+
+		result = messageList.get(id);
+		messageList.put(id, null);
 	}
 
 	/**
@@ -348,7 +398,7 @@ public abstract class SimpleUnit implements Serializable, IMessageReceivedHandle
 		 * damage.
 		 */
 		int id;
-		Message damageMessage;
+		Message damageMessage, result;
 		synchronized (this) {
 			id = localMessageCounter++;
 
@@ -358,14 +408,40 @@ public abstract class SimpleUnit implements Serializable, IMessageReceivedHandle
 			damageMessage.put("y", y);
 			damageMessage.put("damage", damage);
 			damageMessage.put("id", id);
-			damageMessage.put("serverUpdate", true);
 		}
 		sendServerMessage(damageMessage);
-	}
 
+		// Wait for the reply
+		while (!messageList.containsKey(id)) {
+			try {
+				Thread.sleep(50);
+			} catch (InterruptedException e) {
+			}
+
+			// Quit if the game window has closed
+			if (!GameState.getRunningState())
+				return;
+		}
+
+		result = messageList.get(id);
+		messageList.put(id, null);
+	}
 
 	// Disconnects the unit from the battlefield by exiting its run-state
 	public void disconnect() {
 		running = false;
+	}
+
+	/**
+	 * Stop the running thread. This has to be called explicitly to make sure
+	 * the program terminates cleanly.
+	 */
+	public void stopRunnerThread() {
+		try {
+			runnerThread.join();
+		} catch (InterruptedException ex) {
+			assert (false) : "Unit stopRunnerThread was interrupted";
+		}
+
 	}
 }

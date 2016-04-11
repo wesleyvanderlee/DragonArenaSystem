@@ -8,8 +8,8 @@ public class Core {
 
 	public static void main(String[] args) throws Exception {
 
-		for (int i = 0; i < 1; i++) {
-			final int index = i;
+		for (int i = 0; i < Configuration.SERVER_IDS.length; i++) {
+			final int index = i;			
 			new Thread(new Runnable() {
 				public void run() {
 					try {
@@ -22,9 +22,9 @@ public class Core {
 				}
 			}).start();
 		}
-		for (int i = 0; i < 10; i++) {
+		for (int i = 0; i < 5; i++) {
 			final int clientID = i;
-			final int index = 0;
+			final int index = i;
 			new Thread(new Runnable() {
 				public void run() {
 					try {

@@ -26,14 +26,10 @@ public class GameClient implements Runnable {
 			this.serverID = serverID;
 			this.SERVER_REGISTRY_HOST = SERVER_REGISTRY_HOST;
 			this.SERVER_REGISTRY_PORT = SERVER_REGISTRY_PORT;
-			this.serverRegister = LocateRegistry.getRegistry(SERVER_REGISTRY_HOST, SERVER_REGISTRY_PORT);
-			this.gameServer = (GameServerInterface) serverRegister.lookup(serverID);
 		} catch (Exception e) {
-			 e.printStackTrace();
+			e.printStackTrace();
 		}
 		this.ID = clientID;
-		this.runnerThread = new Thread(this);
-		this.runnerThread.start();
 	}
 
 	private void sendServerMessage(Message message) {
@@ -60,27 +56,32 @@ public class GameClient implements Runnable {
 
 	public void run() {
 		try {
-			battlefield = (SimpleBattleFieldInterface) serverRegister.lookup(gameServer.getBattleField());
-		} catch (Exception e1) {
-			e1.printStackTrace();
-		}
-		while (first) {
-			initPlayer();
-			new Thread(new Runnable() {
-				public void run() {
-					new BattleFieldViewer(serverID, SERVER_REGISTRY_HOST, SERVER_REGISTRY_PORT);
+			this.serverRegister = LocateRegistry.getRegistry(SERVER_REGISTRY_HOST, SERVER_REGISTRY_PORT);
+			this.gameServer = (GameServerInterface) serverRegister.lookup(serverID);
+			while (gameServer.isReady()) {
+				battlefield = (SimpleBattleFieldInterface) serverRegister.lookup(gameServer.getBattleField());
+				while (first) {
+					initPlayer();
+					{
+						new Thread(new Runnable() {
+							public void run() {
+								new BattleFieldViewer(serverID, SERVER_REGISTRY_HOST, SERVER_REGISTRY_PORT);
+							}
+						}).start();
+					}
+					first = false;
 				}
-			}).start();
-			first = false;
-		}
-
-		while (true) {
+				while (true) {
+					// stay-alive
+				}
+			}
+		} catch (Exception e) {
+			System.out.println("Waiting for server to be ready");
 			try {
-
-				// stay-alive
-
-			} catch (Exception e) {
-				e.printStackTrace();
+				Thread.sleep(2000);
+			} catch (InterruptedException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
 			}
 		}
 	}

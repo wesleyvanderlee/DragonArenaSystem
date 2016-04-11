@@ -7,12 +7,13 @@ import java.util.ArrayList;
 
 import RMI.Message;
 import RMI.MessageRequest;
+import units.SimpleDragon;
+import units.SimplePlayer;
 import units.SimpleUnit;
 import units.SimpleUnit.UnitType;
 
 public class SimpleBattleField extends UnicastRemoteObject implements SimpleBattleFieldInterface, Serializable{
 	private SimpleUnit[][] map;
-	private UnitType[][] map2;
 	public final static int MAP_WIDTH = 25;
 	public final static int MAP_HEIGHT = 25;	
 	private ArrayList<SimpleUnit> units;
@@ -22,7 +23,6 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 	public SimpleBattleField()throws IOException {
 		synchronized (this) {
 			this.map = new SimpleUnit[MAP_WIDTH][MAP_HEIGHT];
-			this.map2 = new UnitType[MAP_WIDTH][MAP_HEIGHT];
 
 			units = new ArrayList<SimpleUnit>();
 		}
@@ -55,7 +55,6 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 				return false;
 
 			map[x][y] = unit;
-			map2[x][y] = type;
 			unit.setPosition(x, y);
 		}
 		units.add(unit);
@@ -66,7 +65,6 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 
 		//unit.setPosition(x, y);
 		map[x][y] = unit;
-		map2[x][y] = type;
 		
 		return true;
 	}
@@ -76,19 +74,15 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 		assert y >= 0 && x < map[0].length;
 		return map[x][y];
 	}
-	
-	public UnitType getUnitType(int x, int y) {
-		assert x >= 0 && x < map.length;
-		assert y >= 0 && x < map[0].length;
-		return map2[x][y];
-	}
 
 	private boolean moveUnit(SimpleUnit unit, int newX, int newY, UnitType type) {
 		int prevX = unit.getX();
 		int prevY = unit.getY();
 
 		if (unit.getHitPoints() <= 0)
+		{
 			return false;
+		}
 		if (newX >= 0 && newX < BattleField.MAP_WIDTH)
 		{
 			if (newY >= 0 && newY < BattleField.MAP_HEIGHT)
@@ -98,7 +92,6 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 					if (putUnit(unit, newX, newY, type))
 					{
 						map[prevX][prevY] = null;
-						map2[prevX][prevY] = null;
 						return true;
 					}
 				}
@@ -109,16 +102,16 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 
 	private void removeUnit(int x, int y) {
 		SimpleUnit unitToRemove = this.getUnit(x, y);
+
 		if (unitToRemove == null)
 			return; // There was no unit here to remove
 		map[x][y] = null;
-		map2[x][y] = null;
 		unitToRemove.disconnect();
 		units.remove(unitToRemove);
 	}
 	
 	public Message onMessageReceived(Message msg) {
-		Message reply = null;
+		Message reply = new Message();;
 		String origin = (String)msg.get("origin");
 		MessageRequest request = (MessageRequest)msg.get("request");
 		SimpleUnit unit;
@@ -127,13 +120,14 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 		{
 			case spawnUnit:
 				this.spawnUnit((SimpleUnit)msg.get("unit"), (Integer)msg.get("x"), (Integer)msg.get("y"), (UnitType)msg.get("type"));
+				reply.put("id", msg.get("id"));
 				break;
 			case putUnit:
 				this.putUnit((SimpleUnit)msg.get("unit"), (Integer)msg.get("x"), (Integer)msg.get("y"), (UnitType)msg.get("type"));
+				reply.put("id", msg.get("id"));
 				break;
 			case getUnit:
 			{
-				reply = new Message();
 				int x = (Integer)msg.get("x");
 				int y = (Integer)msg.get("y");
 				/* Copy the id of the message so that the unit knows 
@@ -146,19 +140,18 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 			}
 			case getType:
 			{
-				reply = new Message();
 				int x = (Integer)msg.get("x");
 				int y = (Integer)msg.get("y");
 				/* Copy the id of the message so that the unit knows 
 				 * what message the battlefield responded to. 
 				 */
 				reply.put("id", msg.get("id"));
-				if (getUnitType(x, y) == UnitType.player)
+				if (getUnit(x, y) instanceof SimplePlayer)
 				{
 					reply.put("type", UnitType.player);
 					
 				}
-				else if (getUnitType(x, y)== UnitType.dragon)
+				else if (getUnit(x, y) instanceof SimpleDragon)
 				{
 					reply.put("type", UnitType.dragon);
 				}
@@ -173,11 +166,13 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 				int x = (Integer)msg.get("x");
 				int y = (Integer)msg.get("y");
 				unit = this.getUnit(x, y);
+
+				//TODO unit is null
 				if (unit != null)
+				{
 					unit.adjustHitPoints( -(Integer)msg.get("damage") );
-				/* Copy the id of the message so that the unit knows 
-				 * what message the battlefield responded to. 
-				 */
+				}
+				reply.put("id", msg.get("id"));
 				break;
 			}
 			case healDamage:
@@ -187,21 +182,17 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 				unit = this.getUnit(x, y);
 				if (unit != null)
 					unit.adjustHitPoints( (Integer)msg.get("healed") );
-				/* Copy the id of the message so that the unit knows 
-				 * what message the battlefield responded to. 
-				 */
+				reply.put("id", msg.get("id"));
 				break;
 			}
 			case moveUnit:
 				reply = new Message();
 				this.moveUnit((SimpleUnit) msg.get("unit"), (Integer)msg.get("x"), (Integer)msg.get("y"), (UnitType)msg.get("type"));
-				/* Copy the id of the message so that the unit knows 
-				 * what message the battlefield responded to. 
-				 */
 				reply.put("id", msg.get("id"));
 				break;
 			case removeUnit:
 				this.removeUnit((Integer)msg.get("x"), (Integer)msg.get("y"));
+				reply.put("id", msg.get("id"));
 				break;
 		}
 		return reply;
@@ -233,16 +224,16 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 			for(int c = 0; c < map.length; c++)
 			{
 				string += "|";
-				if(map2[r][c] == null)
+				if(map[r][c] == null)
 				{
 					string += "  ";
 				}
-				else if(map2[r][c] == UnitType.player)
+				else if(map[r][c] instanceof SimplePlayer)
 				{
 					newCount++;
 					string += "P ";
 				}
-				else if(map2[r][c] == UnitType.dragon)
+				else if(map[r][c]instanceof SimpleDragon)
 				{	
 					string += "D ";
 				}
@@ -256,5 +247,17 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 		string += units.size() +"\n";
 		return string;
 		
+	}
+
+	public SimpleUnit[][] getMap() {
+		return map;
+	}
+
+	public void setMap(SimpleUnit[][] map) {
+		this.map = map;
+	}
+
+	public void setUnits(ArrayList<SimpleUnit> units) {
+		this.units = units;
 	}
 }

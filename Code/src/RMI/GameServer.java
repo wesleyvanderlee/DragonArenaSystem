@@ -1,21 +1,17 @@
 package RMI;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.rmi.Naming;
+import java.rmi.AccessException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
-import java.util.concurrent.locks.ReentrantLock;
 
 import game.BattleField;
 import game.SimpleBattleField;
-import presentation.BattleFieldViewer;
+import game.SimpleBattleFieldInterface;
 import units.SimpleDragon;
-import units.SimplePlayer;
-import units.SimpleUnit;
 import units.SimpleUnit.UnitType;
 
 public class GameServer extends UnicastRemoteObject implements GameServerInterface, Runnable {
@@ -28,31 +24,28 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	int SERVER_REGISTRY_PORT;
 	Registry severRegistry;
 	SimpleBattleField battlefield;
+	SimpleBattleFieldInterface battlefieldinterface;
 	Thread battleFieldThread;
 	ArrayList<GameServerInterface> gameServers;
 	ArrayList<String> gameClients;
 	int initTime;
 	GameServerInterface oldestGameServer;
-	private ReentrantLock lock = new ReentrantLock();
 	boolean first = true;
+	boolean ready = false;
 
 	public GameServer(String serverID, String SERVER_HOST, int SERVER_REGISTRY_PORT) throws IOException {
 		super();
 		this.gameClients = new ArrayList<String>();
+		this.gameServers = new ArrayList<GameServerInterface>();
 		this.ID = serverID;
 		this.HOST = SERVER_HOST;
 		this.SERVER_REGISTRY_PORT = SERVER_REGISTRY_PORT;
 		this.register();
 		this.battlefield = new SimpleBattleField();
-		oldestGameServer = this;
-		lock.lock();
-		try {
-			sync();
-
-		} finally {
-			lock.unlock();
-		}
-
+		this.oldestGameServer = this;
+		this.sync();
+		this.makeDragons();
+		this.initBattlefield();
 	}
 
 	public int getRank() {
@@ -63,36 +56,45 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		return this.ID;
 	}
 
-	public synchronized void sync() {
-//		if (!this.ID.equals(Configuration.SERVER_IDS[0]))
-//			return;
-		int covered = 0;
-		while (covered < Configuration.SERVER_IDS.length - 1) {
-			for (int i = 0; i < Configuration.SERVER_IDS.length; i++) {
-				try {
+	public void sync() {
+		for (int i = 0; i < Configuration.SERVER_IDS.length; i++) {
+			try {
+				Registry otherRegistry = LocateRegistry.getRegistry(Configuration.SERVER_HOSTS[i],
+						Configuration.SERVER_REGISTRY_PORTS[i]);
+				GameServerInterface otherServer = (GameServerInterface) otherRegistry
+						.lookup(Configuration.SERVER_IDS[i]);
+				this.setOldestGameServer(otherServer.getOldestGameServer());
+				if (!otherServer.getID().equals(this.ID)) {
+					gameServers.add(otherServer);
+				}
+			} catch (Exception e) {
+				// e.printStackTrace();
+			}
+		}
+	}
 
-					Registry otherRegistry = LocateRegistry.getRegistry(Configuration.SERVER_HOSTS[i],
-							Configuration.SERVER_REGISTRY_PORTS[i]);
-					GameServerInterface otherServer = (GameServerInterface) otherRegistry
-							.lookup(Configuration.SERVER_IDS[i]);
-					otherServer.setOldest(this);
-					covered++;
+	private void initBattlefield() {
+		if (gameServers.size() > 0) {
+			for (int i = 0; i < gameServers.size(); i++) {
+				try {
+					Registry otherRegistry = LocateRegistry.getRegistry(gameServers.get(i).getHOST(),
+							gameServers.get(i).getSERVER_REGISTRY_PORT());
+					SimpleBattleFieldInterface bf = (SimpleBattleFieldInterface) otherRegistry
+							.lookup(gameServers.get(i).getBattleField());
+					updateBattlefield(bf);
 				} catch (Exception e) {
-					try {
-//						setOldest(this);
-					} catch (Exception e1) {
-						e1.printStackTrace();
-					}
+					e.printStackTrace();
 				}
 			}
 		}
 	}
 
-	public void setOldest(GameServerInterface gs) throws RemoteException {
-		this.oldestGameServer = gs;
-		if (first) {
-			this.makeDragons();
-			first = false;
+	private void updateBattlefield(SimpleBattleFieldInterface bf) {
+		try {
+			this.battlefield.setMap(bf.getMap());
+			this.battlefield.setUnits(bf.getUnits());
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 
 	}
@@ -115,15 +117,13 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 					if (battlefield.getUnit(x, y) != null) {
 						break;
 					}
-					final int finalX = x;
-					final int finalY = y;
-					Message message = new Message();
-					message.put("serverRequest", MessageRequest.addDragon);
-					message.put("ID", this.ID);
-					message.put("x", finalX);
-					message.put("type", UnitType.dragon);
-					message.put("y", finalY);
+					initDragon(x, y);
 
+					Message message = new Message();
+					message.put("serverRequest", MessageRequest.updatebattlefield);
+					message.put("ID", this.ID);
+					message.put("type", UnitType.dragon);
+					message.put("battlefield", this.battlefield);
 					serverBroadCast(message);
 				}
 			}
@@ -132,21 +132,21 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		}
 	}
 
-	
 	/**
-	 * Sends a message to all other GameServers in a meshstyle 
+	 * Sends a message to all other GameServers in a meshstyle
+	 * 
 	 * @param message
 	 */
 	public void serverBroadCast(Message message) {
-		for (int i = 0; i < 1; i++) {
+		for (int i = 0; i < gameServers.size(); i++) {
 			try {
-				Registry otherRegistry = LocateRegistry.getRegistry(Configuration.SERVER_HOSTS[i],
-						Configuration.SERVER_REGISTRY_PORTS[i]);
+				Registry otherRegistry = LocateRegistry.getRegistry(gameServers.get(i).getHOST(),
+						gameServers.get(i).getSERVER_REGISTRY_PORT());
 				GameServerInterface otherServer = (GameServerInterface) otherRegistry
-						.lookup(Configuration.SERVER_IDS[i]);
+						.lookup(gameServers.get(i).getID());
 				otherServer.onMessageReceived(message);
 			} catch (Exception e) {
-				e.printStackTrace();
+
 			}
 		}
 	}
@@ -165,16 +165,19 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	}
 
 	/**
-	 * Sets or retrieves this GameServer's serverRegistry which is a registry containing the locations of all other Clients.
-	 * This method is called at initialization of the GameServer
+	 * Sets or retrieves this GameServer's serverRegistry which is a registry
+	 * containing the locations of all other Clients. This method is called at
+	 * initialization of the GameServer
 	 */
 	private void register() {
 		try {
-			// First try to create a new registry, might fail if the port already contains a registry
+			// First try to create a new registry, might fail if the port
+			// already contains a registry
 			severRegistry = LocateRegistry.createRegistry(SERVER_REGISTRY_PORT);
 		} catch (Exception e) {
 			try {
-				// If the PORT is already taken, then a server registry is set, thus that registry should be retrieved.
+				// If the PORT is already taken, then a server registry is set,
+				// thus that registry should be retrieved.
 				severRegistry = LocateRegistry.getRegistry(SERVER_REGISTRY_PORT);
 			} catch (RemoteException e1) {
 				e1.printStackTrace();
@@ -183,7 +186,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 			try {
 				severRegistry.bind(this.ID, this);
 			} catch (Exception e) {
-				 e.printStackTrace();
+				e.printStackTrace();
 			}
 		}
 
@@ -201,20 +204,23 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		case addDragon:
 			initDragon((Integer) msg.get("x"), (Integer) msg.get("y"));
 			break;
+		case addServer:
+			gameServers.add((GameServerInterface) msg.get("gameServer"));
+			break;
+		case updatebattlefield:
+			this.battlefieldinterface = ((SimpleBattleFieldInterface) msg.get("battlefield"));
+			this.updateBattlefield(battlefieldinterface);
+			break;
 		case toBattleField:
 			reply = battlefield.onMessageReceived(msg);
-			// if( true == (boolean) msg.get("serverUpdate") && msg.get("unit")
-			// instanceof SimplePlayer)
-			// {
-			// Message updateBattleField = new Message();
-			// updateBattleField.put("battlefield", this.battlefield);
-			// updateBattleField.put("serverRequest",
-			// MessageRequest.updatebattlefield);
-			// serverBroadCast(updateBattleField);
-			// }
+			Message message = new Message();
+			message.put("serverRequest", MessageRequest.updatebattlefield);
+			message.put("ID", this.ID);
+			message.put("battlefield", this.battlefield);
+			serverBroadCast(message);
 			break;
 		default:
-			// No message type found 
+			// No message type found
 			break;
 		}
 		return reply;
@@ -226,11 +232,6 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		message.put("ID", this.ID);
 		GameServerInterface otherSever = (GameServerInterface) severRegistry.lookup(ID);
 		otherSever.onMessageReceived(message);
-	}
-
-	@Override
-	public void run() {
-		//stay-alive
 	}
 
 	@Override
@@ -248,5 +249,59 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		return "BattleField";
 	}
 
+	public GameServerInterface getOldestGameServer() {
+		return oldestGameServer;
+	}
+
+	public void setOldestGameServer(GameServerInterface oldestGameServer) {
+		this.oldestGameServer = oldestGameServer;
+	}
+
+	public boolean isReady() {
+		return ready;
+	}
+
+	public void setReady(boolean ready) {
+		this.ready = ready;
+	}
+
+	@Override
+	public void run() {
+		ready = true;
+		
+		Message message = new Message();
+		message.put("serverRequest", MessageRequest.addServer);
+		message.put("gameServer", this);
+		serverBroadCast(message);
+		
+		System.out.println(ID + " is running");
+		try {
+			System.out.println(ID + " oldest: " + this.oldestGameServer.getID());
+		} catch (RemoteException e) {
+			e.printStackTrace();
+		}
+		try {
+			severRegistry.rebind("BattleField", this.battlefield);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		// stay-alive
+	}
+
+	public String getHOST() {
+		return HOST;
+	}
+
+	public void setHOST(String HOST) {
+		HOST = HOST;
+	}
+
+	public int getSERVER_REGISTRY_PORT() {
+		return SERVER_REGISTRY_PORT;
+	}
+
+	public void setSERVER_REGISTRY_PORT(int SERVER_REGISTRY_PORT) {
+		SERVER_REGISTRY_PORT = SERVER_REGISTRY_PORT;
+	}
 
 }

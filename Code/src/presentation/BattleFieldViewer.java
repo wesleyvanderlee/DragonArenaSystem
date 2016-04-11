@@ -116,8 +116,7 @@ public class BattleFieldViewer extends JPanel implements Runnable {
 				try {
 					u = bf.getUnit(i, j);
 				} catch (Exception e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+					//e.printStackTrace();
 				}
 				if (u == null) continue; // Nothing to draw in this sector
 
@@ -171,16 +170,11 @@ public class BattleFieldViewer extends JPanel implements Runnable {
 		while(GameState.getRunningState()) {		
 			/* Keep the system running on a nice speed */
 			try {
+				battle = (SimpleBattleFieldInterface) serverRegister.lookup(gameServer.getBattleField());
 				Thread.sleep((int)(1000 * GameState.GAME_SPEED));
-				try {
-					battle= (SimpleBattleFieldInterface) serverRegister.lookup(gameServer.getBattleField());
-				} catch (Exception e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
 				invalidate();
 				repaint();
-			} catch (InterruptedException e) {
+			} catch (Exception e) {
 				e.printStackTrace();
 			}
 		}
