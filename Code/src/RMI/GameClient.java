@@ -76,13 +76,11 @@ public class GameClient implements Runnable, Serializable{
 				battlefield = (SimpleBattleFieldInterface) gameServer.getBattleField();
 				while (first) {
 					initPlayer();
-					{
 						new Thread(new Runnable() {
 							public void run() {
 								new BattleFieldViewer(serverID, SERVER_REGISTRY_HOST, SERVER_REGISTRY_PORT);
 							}
 						}).start();
-					}
 					first = false;
 				}
 				while (true) {

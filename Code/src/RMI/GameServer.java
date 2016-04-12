@@ -123,7 +123,6 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 				try {
 					Registry otherRegistry = LocateRegistry.getRegistry(gameServers.get(i).getHOST(),
 							gameServers.get(i).getSERVER_REGISTRY_PORT());
-//					SimpleBattleFieldInterface bf = (SimpleBattleFieldInterface) otherRegistry.lookup(gameServers.get(i).getBattleField());
 					SimpleBattleFieldInterface bf =gameServers.get(i).getBattleField();
 					updateBattlefield(bf);
 				} catch (Exception e) {
@@ -284,17 +283,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	public String toString() {
 		return this.ID;
 	}
-
-//	@Override
-//	public String getBattleField() {
-//		try {
-//			severRegistry.rebind("BattleField", this.battlefield);
-//		} catch (RemoteException e) {
-//			e.printStackTrace();
-//		}
-//		return "BattleField";
-//	}
-//	
+	
 	@Override
 	public SimpleBattleFieldInterface getBattleField() {
 		return (SimpleBattleFieldInterface) this.battlefield;
