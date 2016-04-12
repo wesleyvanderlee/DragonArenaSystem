@@ -1,5 +1,6 @@
 package RMI;
 
+import java.io.Serializable;
 import java.rmi.AccessException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
@@ -10,7 +11,7 @@ import game.SimpleBattleFieldInterface;
 import presentation.BattleFieldViewer;
 import units.SimplePlayer;
 
-public class GameClient implements Runnable {
+public class GameClient implements Runnable, Serializable{
 	GameServerInterface gameServer;
 	int SERVER_REGISTRY_PORT;
 	String SERVER_REGISTRY_HOST;
@@ -31,6 +32,18 @@ public class GameClient implements Runnable {
 		}
 		this.ID = clientID;
 	}
+	
+	public void updateServerInfo(String serverID, String SERVER_REGISTRY_HOST, int SERVER_REGISTRY_PORT) {
+		try {
+			this.serverID = serverID;
+			this.SERVER_REGISTRY_HOST = SERVER_REGISTRY_HOST;
+			this.SERVER_REGISTRY_PORT = SERVER_REGISTRY_PORT;
+			this.serverRegister = LocateRegistry.getRegistry(SERVER_REGISTRY_HOST, SERVER_REGISTRY_PORT);
+			this.gameServer = (GameServerInterface) serverRegister.lookup(serverID);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
 
 	private void sendServerMessage(Message message) {
 		message.put("serverRequest", MessageRequest.toBattleField);
@@ -44,6 +57,7 @@ public class GameClient implements Runnable {
 	public void initPlayer() {
 		SimplePlayer player;
 		try {
+			gameServer.addClient(this);
 			int[] values = new int[2];
 			values = (int[]) battlefield.getRandomLocation();
 			player = new SimplePlayer(values[0], values[1], serverID, SERVER_REGISTRY_HOST, SERVER_REGISTRY_PORT);
@@ -80,7 +94,6 @@ public class GameClient implements Runnable {
 			try {
 				Thread.sleep(2000);
 			} catch (InterruptedException e1) {
-				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
 		}

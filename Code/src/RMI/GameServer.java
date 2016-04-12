@@ -27,7 +27,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	SimpleBattleFieldInterface battlefieldinterface;
 	Thread battleFieldThread;
 	ArrayList<GameServerInterface> gameServers;
-	ArrayList<String> gameClients;
+	ArrayList<GameClient> gameClients;
 	int initTime;
 	GameServerInterface oldestGameServer;
 	boolean first = true;
@@ -35,7 +35,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 
 	public GameServer(String serverID, String SERVER_HOST, int SERVER_REGISTRY_PORT) throws IOException {
 		super();
-		this.gameClients = new ArrayList<String>();
+		this.gameClients = new ArrayList<GameClient>();
 		this.gameServers = new ArrayList<GameServerInterface>();
 		this.ID = serverID;
 		this.HOST = SERVER_HOST;
@@ -47,6 +47,50 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		this.makeDragons();
 		this.initBattlefield();
 	}
+
+//	public void balanceClients() {
+//		System.out.println("AAAAAA");
+//		int totalClients = 0, balanceNum = 0;
+//		int[] numClientsNeeded = new int[gameServers.size()];
+//		try {
+//			for (int i = 0; i < gameServers.size(); i++) {
+//				totalClients = +gameServers.get(i).getGameClients().size();
+//			}
+//		} catch (Exception e) {
+//			e.printStackTrace();
+//		}
+//
+//		System.out.println("BBBBB");
+//		balanceNum = totalClients / gameServers.size();
+//
+//		for (int i = 0; i < gameServers.size(); i++) {
+//			try {
+//				numClientsNeeded[i] = balanceNum - gameServers.get(i).getGameClients().size();
+//			} catch (Exception e) {
+//				e.printStackTrace();
+//			}
+//		}
+//
+//		System.out.println("CCCC");
+//		int count = 0;
+//		if (this.gameClients.size() > balanceNum) {
+//			if (numClientsNeeded[count] > 0) {
+//				
+//				try {
+//					Message message = new Message();
+//					message.put("serverRequest", MessageRequest.newClient);
+//					message.put("ID", this.ID);
+//					message.put("client", this.gameClients.get(count));
+//					System.out.println("Client "+ this.gameClients.get(count).ID + " to " + this.gameServers.get(count).getID());
+//					this.gameClients.get(count).updateServerInfo(this.gameServers.get(count).getID(),this.gameServers.get(count).getHOST(),this.gameServers.get(count).getSERVER_REGISTRY_PORT());
+//					sendSeverMessage(this.gameServers.get(count).getID(), message);		
+//				} catch (Exception e) {
+//					e.printStackTrace();
+//				}
+//				
+//			}
+//		}
+//	}
 
 	public int getRank() {
 		return Integer.parseInt(ID.substring(ID.length() - 1, ID.length()));
@@ -192,7 +236,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 
 	}
 
-	public boolean addClient(String clientID) {
+	public boolean addClient(GameClient clientID) {
 		this.gameClients.add(clientID);
 		return true;
 	}
@@ -204,8 +248,13 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		case addDragon:
 			initDragon((Integer) msg.get("x"), (Integer) msg.get("y"));
 			break;
+		case addClient:
+			gameClients.add((GameClient) msg.get("gameClient"));
+//			balanceClients();
+			break;
 		case addServer:
 			gameServers.add((GameServerInterface) msg.get("gameServer"));
+//			balanceClients();
 			break;
 		case updatebattlefield:
 			this.battlefieldinterface = ((SimpleBattleFieldInterface) msg.get("battlefield"));
@@ -226,10 +275,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		return reply;
 	}
 
-	private void sendSeverMessage(String ID, MessageRequest request) throws Exception {
-		Message message = new Message();
-		message.put("serverRequest", request);
-		message.put("ID", this.ID);
+	private void sendSeverMessage(String ID, Message message) throws Exception {
 		GameServerInterface otherSever = (GameServerInterface) severRegistry.lookup(ID);
 		otherSever.onMessageReceived(message);
 	}
@@ -268,12 +314,12 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	@Override
 	public void run() {
 		ready = true;
-		
+
 		Message message = new Message();
 		message.put("serverRequest", MessageRequest.addServer);
 		message.put("gameServer", this);
 		serverBroadCast(message);
-		
+
 		System.out.println(ID + " is running");
 		try {
 			System.out.println(ID + " oldest: " + this.oldestGameServer.getID());
@@ -302,6 +348,14 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 
 	public void setSERVER_REGISTRY_PORT(int SERVER_REGISTRY_PORT) {
 		SERVER_REGISTRY_PORT = SERVER_REGISTRY_PORT;
+	}
+
+	public ArrayList<GameClient> getGameClients() {
+		return gameClients;
+	}
+
+	public void setGameClients(ArrayList<GameClient> gameClients) {
+		this.gameClients = gameClients;
 	}
 
 }
