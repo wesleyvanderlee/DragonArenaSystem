@@ -1,11 +1,12 @@
 package game;
 
+import java.io.Serializable;
 import java.rmi.Remote;
 import java.util.ArrayList;
 
 import units.SimpleUnit;
 
-public interface SimpleBattleFieldInterface extends Remote {
+public interface SimpleBattleFieldInterface extends Remote, Serializable {
 	public SimpleBattleField getBattleField() throws Exception;
 	public String battleFieldString()throws Exception;
 	public int[] getRandomLocation()throws Exception;

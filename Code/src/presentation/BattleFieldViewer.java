@@ -170,7 +170,7 @@ public class BattleFieldViewer extends JPanel implements Runnable {
 		while(GameState.getRunningState()) {		
 			/* Keep the system running on a nice speed */
 			try {
-				battle = (SimpleBattleFieldInterface) serverRegister.lookup(gameServer.getBattleField());
+				battle = (SimpleBattleFieldInterface) gameServer.getBattleField();
 				Thread.sleep((int)(1000 * GameState.GAME_SPEED));
 				invalidate();
 				repaint();

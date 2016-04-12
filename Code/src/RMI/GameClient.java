@@ -73,7 +73,7 @@ public class GameClient implements Runnable, Serializable{
 			this.serverRegister = LocateRegistry.getRegistry(SERVER_REGISTRY_HOST, SERVER_REGISTRY_PORT);
 			this.gameServer = (GameServerInterface) serverRegister.lookup(serverID);
 			while (gameServer.isReady()) {
-				battlefield = (SimpleBattleFieldInterface) serverRegister.lookup(gameServer.getBattleField());
+				battlefield = (SimpleBattleFieldInterface) gameServer.getBattleField();
 				while (first) {
 					initPlayer();
 					{

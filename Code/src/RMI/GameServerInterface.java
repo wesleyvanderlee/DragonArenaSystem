@@ -3,13 +3,14 @@ import java.rmi.Remote;
 import java.util.ArrayList;
 
 import game.SimpleBattleField;
+import game.SimpleBattleFieldInterface;
 
 public interface GameServerInterface extends Remote{
 	public boolean addClient(GameClient clientID) throws java.rmi.RemoteException;
 	public String getID() throws java.rmi.RemoteException;
 	public void initDragon(int x, int y) throws java.rmi.RemoteException;
 	public Message onMessageReceived(Message msg) throws Exception;
-	public String getBattleField() throws Exception;
+	public SimpleBattleFieldInterface getBattleField() throws Exception;
 	public GameServerInterface getOldestGameServer() throws Exception;
 	public void setOldestGameServer(GameServerInterface oldestGameServer) throws Exception;
 	public int getRank()throws Exception;

@@ -12,7 +12,7 @@ import units.SimplePlayer;
 import units.SimpleUnit;
 import units.SimpleUnit.UnitType;
 
-public class SimpleBattleField extends UnicastRemoteObject implements SimpleBattleFieldInterface, Serializable{
+public class SimpleBattleField extends UnicastRemoteObject implements SimpleBattleFieldInterface{
 	private SimpleUnit[][] map;
 	public final static int MAP_WIDTH = 25;
 	public final static int MAP_HEIGHT = 25;	
