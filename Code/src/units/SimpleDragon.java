@@ -56,15 +56,17 @@ public class SimpleDragon extends SimpleUnit implements Runnable, Serializable {
 
 		/* Create a random delay */
 		timeBetweenTurns = (int)(Math.random() * (MAX_TIME_BETWEEN_TURNS - MIN_TIME_BETWEEN_TURNS)) + MIN_TIME_BETWEEN_TURNS;
-
+		
 		if (!spawn(x, y, type))
 		{
 			return; // We could not spawn on the battlefield
 		}
 	}
+	
 	@Override
 	public void run() 
 	{		
+		
 		ArrayList <Direction> adjacentPlayers = new ArrayList<Direction> ();
 		this.running = true;
 		while(GameState.getRunningState() && this.running) 
@@ -121,11 +123,7 @@ public class SimpleDragon extends SimpleUnit implements Runnable, Serializable {
 		}
 	}
 
-	@Override
-	public void onMessageReceived(Message message) {
-		// TODO Auto-generated method stub
-		
-	}
+
 	public UnitType getType() {
 		return type;
 	}

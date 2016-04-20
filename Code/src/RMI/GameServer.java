@@ -1,17 +1,19 @@
 package RMI;
 
 import java.io.IOException;
-import java.rmi.AccessException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.NoSuchElementException;
 
 import game.BattleField;
 import game.SimpleBattleField;
 import game.SimpleBattleFieldInterface;
 import units.SimpleDragon;
+import units.SimpleUnit;
 import units.SimpleUnit.UnitType;
 
 public class GameServer extends UnicastRemoteObject implements GameServerInterface, Runnable {
@@ -32,11 +34,14 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	GameServerInterface oldestGameServer;
 	boolean first = true;
 	boolean ready = false;
+	LinkedList<Message> messageQueue;
+	MessageProcessor mp;
 
 	public GameServer(String serverID, String SERVER_HOST, int SERVER_REGISTRY_PORT) throws IOException {
 		super();
 		this.gameClients = new ArrayList<GameClient>();
 		this.gameServers = new ArrayList<GameServerInterface>();
+		this.messageQueue = new LinkedList<Message>();
 		this.ID = serverID;
 		this.HOST = SERVER_HOST;
 		this.SERVER_REGISTRY_PORT = SERVER_REGISTRY_PORT;
@@ -44,53 +49,65 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		this.battlefield = new SimpleBattleField();
 		this.oldestGameServer = this;
 		this.sync();
+		this.mp = new MessageProcessor(this);
+		(new Thread(this.mp)).start();
 		this.makeDragons();
 		this.initBattlefield();
 	}
 
-//	public void balanceClients() {
-//		System.out.println("AAAAAA");
-//		int totalClients = 0, balanceNum = 0;
-//		int[] numClientsNeeded = new int[gameServers.size()];
-//		try {
-//			for (int i = 0; i < gameServers.size(); i++) {
-//				totalClients = +gameServers.get(i).getGameClients().size();
-//			}
-//		} catch (Exception e) {
-//			e.printStackTrace();
-//		}
-//
-//		System.out.println("BBBBB");
-//		balanceNum = totalClients / gameServers.size();
-//
-//		for (int i = 0; i < gameServers.size(); i++) {
-//			try {
-//				numClientsNeeded[i] = balanceNum - gameServers.get(i).getGameClients().size();
-//			} catch (Exception e) {
-//				e.printStackTrace();
-//			}
-//		}
-//
-//		System.out.println("CCCC");
-//		int count = 0;
-//		if (this.gameClients.size() > balanceNum) {
-//			if (numClientsNeeded[count] > 0) {
-//				
-//				try {
-//					Message message = new Message();
-//					message.put("serverRequest", MessageRequest.newClient);
-//					message.put("ID", this.ID);
-//					message.put("client", this.gameClients.get(count));
-//					System.out.println("Client "+ this.gameClients.get(count).ID + " to " + this.gameServers.get(count).getID());
-//					this.gameClients.get(count).updateServerInfo(this.gameServers.get(count).getID(),this.gameServers.get(count).getHOST(),this.gameServers.get(count).getSERVER_REGISTRY_PORT());
-//					sendSeverMessage(this.gameServers.get(count).getID(), message);		
-//				} catch (Exception e) {
-//					e.printStackTrace();
-//				}
-//				
-//			}
-//		}
-//	}
+	public Message nextMessgae() {
+		try {
+			return this.messageQueue.removeFirst();
+		} catch (Exception e) {
+			return null;
+		}
+	}
+
+	// public void balanceClients() {
+	// System.out.println("AAAAAA");
+	// int totalClients = 0, balanceNum = 0;
+	// int[] numClientsNeeded = new int[gameServers.size()];
+	// try {
+	// for (int i = 0; i < gameServers.size(); i++) {
+	// totalClients = +gameServers.get(i).getGameClients().size();
+	// }
+	// } catch (Exception e) {
+	// e.printStackTrace();
+	// }
+	//
+	// System.out.println("BBBBB");
+	// balanceNum = totalClients / gameServers.size();
+	//
+	// for (int i = 0; i < gameServers.size(); i++) {
+	// try {
+	// numClientsNeeded[i] = balanceNum -
+	// gameServers.get(i).getGameClients().size();
+	// } catch (Exception e) {
+	// e.printStackTrace();
+	// }
+	// }
+	//
+	// System.out.println("CCCC");
+	// int count = 0;
+	// if (this.gameClients.size() > balanceNum) {
+	// if (numClientsNeeded[count] > 0) {
+	//
+	// try {
+	// Message message = new Message();
+	// message.put("serverRequest", MessageRequest.newClient);
+	// message.put("ID", this.ID);
+	// message.put("client", this.gameClients.get(count));
+	// System.out.println("Client "+ this.gameClients.get(count).ID + " to " +
+	// this.gameServers.get(count).getID());
+	// this.gameClients.get(count).updateServerInfo(this.gameServers.get(count).getID(),this.gameServers.get(count).getHOST(),this.gameServers.get(count).getSERVER_REGISTRY_PORT());
+	// sendSeverMessage(this.gameServers.get(count).getID(), message);
+	// } catch (Exception e) {
+	// e.printStackTrace();
+	// }
+	//
+	// }
+	// }
+	// }
 
 	public int getRank() {
 		return Integer.parseInt(ID.substring(ID.length() - 1, ID.length()));
@@ -123,7 +140,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 				try {
 					Registry otherRegistry = LocateRegistry.getRegistry(gameServers.get(i).getHOST(),
 							gameServers.get(i).getSERVER_REGISTRY_PORT());
-					SimpleBattleFieldInterface bf =gameServers.get(i).getBattleField();
+					SimpleBattleFieldInterface bf = gameServers.get(i).getBattleField();
 					updateBattlefield(bf);
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -160,13 +177,14 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 					if (battlefield.getUnit(x, y) != null) {
 						break;
 					}
-					initDragon(x, y);
 
+					initDragon(x, y);
 					Message message = new Message();
 					message.put("serverRequest", MessageRequest.updatebattlefield);
 					message.put("ID", this.ID);
 					message.put("type", UnitType.dragon);
 					message.put("battlefield", this.battlefield);
+
 					serverBroadCast(message);
 				}
 			}
@@ -240,38 +258,10 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		return true;
 	}
 
-	public Message onMessageReceived(Message msg) throws Exception {
-		MessageRequest serverRequest = (MessageRequest) msg.get("serverRequest");
-		Message reply = null;
-		switch (serverRequest) {
-		case addDragon:
-			initDragon((Integer) msg.get("x"), (Integer) msg.get("y"));
-			break;
-		case addClient:
-			gameClients.add((GameClient) msg.get("gameClient"));
-//			balanceClients();
-			break;
-		case addServer:
-			gameServers.add((GameServerInterface) msg.get("gameServer"));
-//			balanceClients();
-			break;
-		case updatebattlefield:
-			this.battlefieldinterface = ((SimpleBattleFieldInterface) msg.get("battlefield"));
-			this.updateBattlefield(battlefieldinterface);
-			break;
-		case toBattleField:
-			reply = battlefield.onMessageReceived(msg);
-			Message message = new Message();
-			message.put("serverRequest", MessageRequest.updatebattlefield);
-			message.put("ID", this.ID);
-			message.put("battlefield", this.battlefield);
-			serverBroadCast(message);
-			break;
-		default:
-			// No message type found
-			break;
-		}
-		return reply;
+	public void onMessageReceived(Message msg) {
+		this.messageQueue.add(msg);
+//		processMessage();
+//		return null;
 	}
 
 	private void sendSeverMessage(String ID, Message message) throws Exception {
@@ -283,7 +273,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	public String toString() {
 		return this.ID;
 	}
-	
+
 	@Override
 	public SimpleBattleFieldInterface getBattleField() {
 		return (SimpleBattleFieldInterface) this.battlefield;
@@ -308,7 +298,6 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	@Override
 	public void run() {
 		ready = true;
-
 		Message message = new Message();
 		message.put("serverRequest", MessageRequest.addServer);
 		message.put("gameServer", this);
@@ -326,6 +315,46 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 			e.printStackTrace();
 		}
 		// stay-alive
+
+		// while(true){
+		// processMessage();
+		// }
+
+	}
+
+	public void processMessage(Message message) {
+		MessageRequest serverRequest = (MessageRequest) message.get("serverRequest");
+		Message reply = null;
+		switch (serverRequest) {
+		case addDragon:
+			initDragon((Integer) message.get("x"), (Integer) message.get("y"));
+			break;
+		case addClient:
+			gameClients.add((GameClient) message.get("gameClient"));
+			// balanceClients();
+			break;
+		case addServer:
+			gameServers.add((GameServerInterface) message.get("gameServer"));
+			// balanceClients();
+			break;
+		case updatebattlefield:
+			this.battlefieldinterface = ((SimpleBattleFieldInterface) message.get("battlefield"));
+			this.updateBattlefield(battlefieldinterface);
+			break;
+		case toBattleField:
+			SimpleUnit unit = (SimpleUnit) message.get("unit");
+			reply = battlefield.onMessageReceived(message);
+			unit.onMessageReceived(reply);
+			Message serverMessage = new Message();
+			serverMessage.put("serverRequest", MessageRequest.updatebattlefield);
+			serverMessage.put("ID", this.ID);
+			serverMessage.put("battlefield", this.battlefield);
+			serverBroadCast(serverMessage);
+			break;
+		default:
+			// No message type found
+			break;
+		}
 	}
 
 	public String getHOST() {

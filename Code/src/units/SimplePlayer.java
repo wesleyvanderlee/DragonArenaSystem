@@ -147,12 +147,7 @@ public class SimplePlayer extends SimpleUnit implements Runnable, Serializable
 		}
 		
 	}
-
-	@Override
-	public void onMessageReceived(Message message) {
-		// TODO Auto-generated method stub
-		
-	}
+	
 	public UnitType getType() {
 		return type;
 	}
