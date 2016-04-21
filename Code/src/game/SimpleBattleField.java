@@ -1,10 +1,12 @@
 package game;
 
 import java.io.IOException;
-import java.io.Serializable;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 
+import RMI.GameServerInterface;
 import RMI.Message;
 import RMI.MessageRequest;
 import units.SimpleDragon;
@@ -19,30 +21,28 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 	private ArrayList<SimpleUnit> units;
 	boolean accept = false;
 	public static SimpleBattleField battlefield;
+	private int lastUnitID = 0;
+	GameServerInterface gameServer;
+	int SERVER_REGISTRY_PORT;
+	Registry serverRegister;
 	
-	public SimpleBattleField()throws IOException {
+	public SimpleBattleField(String serverID, String SERVER_REGISTRY_HOST, int SERVER_REGISTRY_PORT)throws IOException {
 		synchronized (this) {
 			this.map = new SimpleUnit[MAP_WIDTH][MAP_HEIGHT];
-
 			units = new ArrayList<SimpleUnit>();
+			try {
+				this.SERVER_REGISTRY_PORT = SERVER_REGISTRY_PORT;
+				this.serverRegister = LocateRegistry.getRegistry(SERVER_REGISTRY_HOST, SERVER_REGISTRY_PORT);
+				this.gameServer = (GameServerInterface) serverRegister.lookup(serverID);
+			} catch (Exception e) {
+				// e.printStackTrace();
+			}
 		}
 	}
 	
 	public SimpleBattleField getBattleField() throws Exception 
 	{
 		return this;
-	}
-	
-	public static SimpleBattleField getBattleField2()
-	{
-		if (battlefield == null)
-			try {
-				battlefield = new SimpleBattleField();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		return battlefield;
 	}
 	public ArrayList<SimpleUnit> getUnits() throws Exception 
 	{
@@ -83,9 +83,9 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 		{
 			return false;
 		}
-		if (newX >= 0 && newX < BattleField.MAP_WIDTH)
+		if (newX >= 0 && newX < MAP_WIDTH)
 		{
-			if (newY >= 0 && newY < BattleField.MAP_HEIGHT)
+			if (newY >= 0 && newY < MAP_HEIGHT)
 			{
 				if (map[newX][newY] == null) 
 				{
@@ -110,9 +110,8 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 		units.remove(unitToRemove);
 	}
 	
-	public Message onMessageReceived(Message msg) {
-		Message reply = new Message();;
-		String origin = (String)msg.get("origin");
+	public void onMessageReceived(Message msg) {
+		Message reply = new Message();
 		MessageRequest request = (MessageRequest)msg.get("request");
 		SimpleUnit unit;
 		
@@ -120,11 +119,9 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 		{
 			case spawnUnit:
 				this.spawnUnit((SimpleUnit)msg.get("unit"), (Integer)msg.get("x"), (Integer)msg.get("y"), (UnitType)msg.get("type"));
-				reply.put("id", msg.get("id"));
 				break;
 			case putUnit:
 				this.putUnit((SimpleUnit)msg.get("unit"), (Integer)msg.get("x"), (Integer)msg.get("y"), (UnitType)msg.get("type"));
-				reply.put("id", msg.get("id"));
 				break;
 			case getUnit:
 			{
@@ -149,7 +146,6 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 				if (getUnit(x, y) instanceof SimplePlayer)
 				{
 					reply.put("type", UnitType.player);
-					
 				}
 				else if (getUnit(x, y) instanceof SimpleDragon)
 				{
@@ -172,7 +168,6 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 				{
 					unit.adjustHitPoints( -(Integer)msg.get("damage") );
 				}
-				reply.put("id", msg.get("id"));
 				break;
 			}
 			case healDamage:
@@ -182,7 +177,6 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 				unit = this.getUnit(x, y);
 				if (unit != null)
 					unit.adjustHitPoints( (Integer)msg.get("healed") );
-				reply.put("id", msg.get("id"));
 				break;
 			}
 			case moveUnit:
@@ -192,10 +186,19 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 				break;
 			case removeUnit:
 				this.removeUnit((Integer)msg.get("x"), (Integer)msg.get("y"));
-				reply.put("id", msg.get("id"));
 				break;
 		}
-		return reply;
+		if (reply != null)
+			sendServerMessage(reply);
+	}
+	
+	private void sendServerMessage(Message message) {
+		message.put("serverRequest", MessageRequest.toUnit);
+		try {
+			gameServer.onMessageReceived(message);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 	
 	public int[] getRandomLocation()
@@ -203,8 +206,8 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 		/* Try picking a random spot */
 		int x, y, attempt = 0;
 		do {
-			x = (int) (Math.random() * BattleField.MAP_WIDTH);
-			y = (int) (Math.random() * BattleField.MAP_HEIGHT);
+			x = (int) (Math.random() * MAP_WIDTH);
+			y = (int) (Math.random() * MAP_HEIGHT);
 			attempt++;
 		} while (getUnit(x, y) != null && attempt < 10);
 
@@ -260,4 +263,13 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 	public void setUnits(ArrayList<SimpleUnit> units) {
 		this.units = units;
 	}
+
+	/**
+	 * Returns a new unique unit ID.
+	 * @return int: a new unique unit ID.
+	 */
+	public synchronized int getNewUnitID() {
+		return ++lastUnitID;
+	}
+
 }

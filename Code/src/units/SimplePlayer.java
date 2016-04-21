@@ -3,10 +3,8 @@ package units;
 import java.io.IOException;
 import java.io.Serializable;
 
-import RMI.Message;
-import game.BattleField;
+import game.SimpleBattleField;
 import game.GameState;
-import units.SimpleUnit.UnitType;
 
 /**
  * A Player is, as the name implies, a playing 
@@ -52,6 +50,9 @@ public class SimplePlayer extends SimpleUnit implements Runnable, Serializable
 
 		if (!spawn(x, y, type))
 			return; // We could not spawn on the battlefield
+		
+		runnerThread = new Thread(this);
+		runnerThread.start();
 	}
 	
 
@@ -99,7 +100,7 @@ public class SimplePlayer extends SimpleUnit implements Runnable, Serializable
 						targetY = this.getY() - 1;
 						break;
 					case down:
-						if (this.getY() >= BattleField.MAP_HEIGHT - 1)
+						if (this.getY() >= SimpleBattleField.MAP_HEIGHT - 1)
 							// The player was at the edge of the map, so he can't move south and there are no units there
 							continue;
 
@@ -115,7 +116,7 @@ public class SimplePlayer extends SimpleUnit implements Runnable, Serializable
 						targetY = this.getY();
 						break;
 					case right:
-						if (this.getX() >= BattleField.MAP_WIDTH - 1)
+						if (this.getX() >= SimpleBattleField.MAP_WIDTH - 1)
 							// The player was at the edge of the map, so he can't move east and there are no units there
 							continue;
 

@@ -1,8 +1,5 @@
-import java.io.IOException;
-
 import RMI.Configuration;
 import RMI.GameClient;
-import RMI.GameServer;
 
 public class StartGameClient {
 	public static void main(String[] args) throws Exception {

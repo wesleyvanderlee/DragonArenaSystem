@@ -1,4 +1,4 @@
-package core;
+package RMI;
 
 public class RequestType 
 {

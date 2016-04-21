@@ -15,4 +15,5 @@ public interface SimpleBattleFieldInterface extends Remote, Serializable {
 	public SimpleUnit[][] getMap()throws Exception;
 	public void setMap(SimpleUnit[][] map) throws Exception;
 	public void setUnits(ArrayList<SimpleUnit> units) throws Exception;
+	public int getNewUnitID() throws Exception;
 }

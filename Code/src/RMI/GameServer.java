@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.NoSuchElementException;
 
-import game.BattleField;
 import game.SimpleBattleField;
 import game.SimpleBattleFieldInterface;
 import units.SimpleDragon;
@@ -46,13 +45,12 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		this.HOST = SERVER_HOST;
 		this.SERVER_REGISTRY_PORT = SERVER_REGISTRY_PORT;
 		this.register();
-		this.battlefield = new SimpleBattleField();
+		this.battlefield = new SimpleBattleField(serverID, SERVER_HOST, SERVER_REGISTRY_PORT);
 		this.oldestGameServer = this;
 		this.sync();
 		this.mp = new MessageProcessor(this);
 		(new Thread(this.mp)).start();
-		this.makeDragons();
-		this.initBattlefield();
+		
 	}
 
 	public Message nextMessgae() {
@@ -167,8 +165,8 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 					/* Try picking a random spot */
 					int x, y, attempt = 0;
 					do {
-						x = (int) (Math.random() * BattleField.MAP_WIDTH);
-						y = (int) (Math.random() * BattleField.MAP_HEIGHT);
+						x = (int) (Math.random() * SimpleBattleField.MAP_WIDTH);
+						y = (int) (Math.random() * SimpleBattleField.MAP_HEIGHT);
 						attempt++;
 					} while (battlefield.getUnit(x, y) != null && attempt < 10);
 
@@ -260,13 +258,6 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 
 	public void onMessageReceived(Message msg) {
 		this.messageQueue.add(msg);
-//		processMessage();
-//		return null;
-	}
-
-	private void sendSeverMessage(String ID, Message message) throws Exception {
-		GameServerInterface otherSever = (GameServerInterface) severRegistry.lookup(ID);
-		otherSever.onMessageReceived(message);
 	}
 
 	@Override
@@ -297,6 +288,8 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 
 	@Override
 	public void run() {
+		this.makeDragons();
+		this.initBattlefield();
 		ready = true;
 		Message message = new Message();
 		message.put("serverRequest", MessageRequest.addServer);
@@ -315,16 +308,10 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 			e.printStackTrace();
 		}
 		// stay-alive
-
-		// while(true){
-		// processMessage();
-		// }
-
 	}
 
 	public void processMessage(Message message) {
 		MessageRequest serverRequest = (MessageRequest) message.get("serverRequest");
-		Message reply = null;
 		switch (serverRequest) {
 		case addDragon:
 			initDragon((Integer) message.get("x"), (Integer) message.get("y"));
@@ -342,14 +329,21 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 			this.updateBattlefield(battlefieldinterface);
 			break;
 		case toBattleField:
-			SimpleUnit unit = (SimpleUnit) message.get("unit");
-			reply = battlefield.onMessageReceived(message);
-			unit.onMessageReceived(reply);
+			battlefield.onMessageReceived(message);	
 			Message serverMessage = new Message();
 			serverMessage.put("serverRequest", MessageRequest.updatebattlefield);
 			serverMessage.put("ID", this.ID);
 			serverMessage.put("battlefield", this.battlefield);
 			serverBroadCast(serverMessage);
+			break;
+		case toUnit:
+			SimpleUnit unit = (SimpleUnit)message.get("unit");
+			if(unit != null)
+			{
+				System.out.println("m s: "+message);
+				System.out.println("id s: "+unit.getUnitID());
+				unit.onMessageReceived(message);
+			}
 			break;
 		default:
 			// No message type found
@@ -362,7 +356,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	}
 
 	public void setHOST(String HOST) {
-		HOST = HOST;
+		this.HOST = HOST;
 	}
 
 	public int getSERVER_REGISTRY_PORT() {
@@ -370,7 +364,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	}
 
 	public void setSERVER_REGISTRY_PORT(int SERVER_REGISTRY_PORT) {
-		SERVER_REGISTRY_PORT = SERVER_REGISTRY_PORT;
+		this.SERVER_REGISTRY_PORT = SERVER_REGISTRY_PORT;
 	}
 
 	public ArrayList<GameClient> getGameClients() {

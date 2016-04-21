@@ -18,9 +18,8 @@ import java.rmi.registry.Registry;
 import javax.swing.JPanel;
 
 import RMI.GameServerInterface;
-import game.BattleField;
-import game.GameState;
 import game.SimpleBattleField;
+import game.GameState;
 import game.SimpleBattleFieldInterface;
 import units.SimpleDragon;
 import units.SimplePlayer;
@@ -93,8 +92,8 @@ public class BattleFieldViewer extends JPanel implements Runnable {
 	public void paint(Graphics g) {
 		SimpleUnit u = null;
 		double x = 0, y = 0;
-		double xRatio = (double)this.getWidth() / (double)BattleField.MAP_WIDTH;
-		double yRatio = (double)this.getHeight() / (double)BattleField.MAP_HEIGHT;
+		double xRatio = (double)this.getWidth() / (double)SimpleBattleField.MAP_WIDTH;
+		double yRatio = (double)this.getHeight() / (double)SimpleBattleField.MAP_HEIGHT;
 		double filler;
 		SimpleBattleFieldInterface bf = (SimpleBattleFieldInterface) battle;
 
@@ -111,8 +110,8 @@ public class BattleFieldViewer extends JPanel implements Runnable {
 		doubleBufferGraphics.setColor(Color.BLACK);
 
 		/* Draw the field, rectangle-wise */
-		for(int i = 0; i < BattleField.MAP_WIDTH; i++, x += xRatio, y = 0)
-			for(int j = 0; j < BattleField.MAP_HEIGHT; j++, y += yRatio) {
+		for(int i = 0; i < SimpleBattleField.MAP_WIDTH; i++, x += xRatio, y = 0)
+			for(int j = 0; j < SimpleBattleField.MAP_HEIGHT; j++, y += yRatio) {
 				try {
 					u = bf.getUnit(i, j);
 				} catch (Exception e) {

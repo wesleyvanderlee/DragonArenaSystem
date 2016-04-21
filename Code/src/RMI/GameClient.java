@@ -7,6 +7,7 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 
+import game.SimpleBattleField;
 import game.SimpleBattleFieldInterface;
 import presentation.BattleFieldViewer;
 import units.SimplePlayer;

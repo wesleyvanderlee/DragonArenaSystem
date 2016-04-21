@@ -2,18 +2,10 @@ package units;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.rmi.RemoteException;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
 import java.util.ArrayList;
 
-import RMI.GameServerInterface;
-import RMI.Message;
-import RMI.MessageRequest;
-import game.BattleField;
+import game.SimpleBattleField;
 import game.GameState;
-import units.Unit.Direction;
-import units.Unit.UnitType;
 
 /**
  * A dragon is a non-playing character, which can't
@@ -61,6 +53,8 @@ public class SimpleDragon extends SimpleUnit implements Runnable, Serializable {
 		{
 			return; // We could not spawn on the battlefield
 		}
+		runnerThread = new Thread(this);
+		runnerThread.start();
 	}
 	
 	@Override
@@ -85,13 +79,13 @@ public class SimpleDragon extends SimpleUnit implements Runnable, Serializable {
 				if (getY() > 0)
 					if ( getType( getX(), getY() - 1 ) == UnitType.player )
 						adjacentPlayers.add(Direction.up);
-				if (getY() < BattleField.MAP_WIDTH - 1)
+				if (getY() < SimpleBattleField.MAP_WIDTH - 1)
 					if ( getType( getX(), getY() + 1 ) == UnitType.player )
 						adjacentPlayers.add(Direction.down);
 				if (getX() > 0)
 					if ( getType( getX() - 1, getY() ) == UnitType.player )
 						adjacentPlayers.add(Direction.left);
-				if (getX() < BattleField.MAP_WIDTH - 1)
+				if (getX() < SimpleBattleField.MAP_WIDTH - 1)
 					if ( getType( getX() + 1, getY() ) == UnitType.player )
 						adjacentPlayers.add(Direction.right);
 				
