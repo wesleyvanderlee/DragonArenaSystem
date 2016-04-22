@@ -6,7 +6,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import RMI.Message;
-import core.exception.IDNotAssignedException;
+import exception.IDNotAssignedException;
 
 @SuppressWarnings("serial")
 public class LocalSocket extends Socket {

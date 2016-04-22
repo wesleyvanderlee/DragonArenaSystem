@@ -7,13 +7,7 @@ import java.awt.Graphics;
 import java.awt.Image;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
-
-import java.io.IOException;
-import java.rmi.AccessException;
 import java.rmi.ConnectException;
-import java.rmi.NotBoundException;
-import java.rmi.RemoteException;
-
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 

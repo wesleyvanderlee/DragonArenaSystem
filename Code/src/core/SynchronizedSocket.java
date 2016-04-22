@@ -2,13 +2,10 @@ package core;
 
 import java.rmi.RemoteException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
 
 import RMI.Message;
-
-import java.util.HashMap;
-
-import core.magic.SynchronizedSocketInterface;
 	
 /**
  * SynchronizedSocket is used to synchronize the messages
