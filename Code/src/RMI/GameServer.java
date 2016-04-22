@@ -7,6 +7,7 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
+import java.util.Map;
 
 import game.BattleField;
 import game.SimpleBattleField;
@@ -32,6 +33,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	GameServerInterface oldestGameServer;
 	boolean first = true;
 	boolean ready = false;
+	private ArrayList<Message>completedMessages;
 
 	public GameServer(String serverID, String SERVER_HOST, int SERVER_REGISTRY_PORT) throws IOException {
 		super();
@@ -258,8 +260,12 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 //			balanceClients();
 			break;
 		case updatebattlefield:
-			this.battlefieldinterface = ((SimpleBattleFieldInterface) msg.get("battlefield"));
-			this.updateBattlefield(battlefieldinterface);
+			if(!completedMessages.contains(msg))
+			{
+				completedMessages.add(msg);
+				this.battlefieldinterface = ((SimpleBattleFieldInterface) msg.get("battlefield"));
+				this.updateBattlefield(battlefieldinterface);
+			}
 			break;
 		case toBattleField:
 			reply = battlefield.onMessageReceived(msg);
@@ -267,6 +273,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 			message.put("serverRequest", MessageRequest.updatebattlefield);
 			message.put("ID", this.ID);
 			message.put("battlefield", this.battlefield);
+			completedMessages.add(message);
 			serverBroadCast(message);
 			break;
 		default:
