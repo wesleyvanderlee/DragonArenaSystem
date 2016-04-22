@@ -93,6 +93,7 @@ public class GameClient implements Runnable, Serializable{
 			System.out.println("Waiting for server to be ready");
 			try {
 				Thread.sleep(2000);
+				
 			} catch (InterruptedException e1) {
 				e1.printStackTrace();
 			}
