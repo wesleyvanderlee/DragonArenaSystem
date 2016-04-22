@@ -33,12 +33,13 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	GameServerInterface oldestGameServer;
 	boolean first = true;
 	boolean ready = false;
-	private ArrayList<Message>completedMessages;
+	private ArrayList<Message> completedMessages;
 
 	public GameServer(String serverID, String SERVER_HOST, int SERVER_REGISTRY_PORT) throws IOException {
 		super();
 		this.gameClients = new ArrayList<GameClient>();
 		this.gameServers = new ArrayList<GameServerInterface>();
+		this.completedMessages = new ArrayList<Message>();
 		this.ID = serverID;
 		this.HOST = SERVER_HOST;
 		this.SERVER_REGISTRY_PORT = SERVER_REGISTRY_PORT;
@@ -260,12 +261,8 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 //			balanceClients();
 			break;
 		case updatebattlefield:
-			if(!completedMessages.contains(msg))
-			{
-				completedMessages.add(msg);
 				this.battlefieldinterface = ((SimpleBattleFieldInterface) msg.get("battlefield"));
 				this.updateBattlefield(battlefieldinterface);
-			}
 			break;
 		case toBattleField:
 			reply = battlefield.onMessageReceived(msg);
