@@ -1,6 +1,7 @@
 package game;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
@@ -14,8 +15,8 @@ import units.SimplePlayer;
 import units.SimpleUnit;
 import units.SimpleUnit.UnitType;
 
-public class SimpleBattleField extends UnicastRemoteObject implements SimpleBattleFieldInterface{
-	private SimpleUnit[][] map;
+public class SimpleBattleField extends UnicastRemoteObject implements SimpleBattleFieldInterface, Serializable{
+	public SimpleUnit[][] map;
 	public final static int MAP_WIDTH = 25;
 	public final static int MAP_HEIGHT = 25;	
 	private ArrayList<SimpleUnit> units;
@@ -49,7 +50,7 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 		return units;
 	}
 	
-	private boolean spawnUnit(SimpleUnit unit, int x, int y, UnitType type) {
+	public boolean spawnUnit(SimpleUnit unit, int x, int y) {
 		synchronized (this) {
 			if (map[x][y] != null)
 				return false;
@@ -61,11 +62,9 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 		return true;
 	}
 
-	private boolean putUnit(SimpleUnit unit, int x, int y, UnitType type) {
-
+	public boolean putUnit(SimpleUnit unit, int x, int y) {
 		//unit.setPosition(x, y);
 		map[x][y] = unit;
-		
 		return true;
 	}
 
@@ -74,8 +73,11 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 		assert y >= 0 && x < map[0].length;
 		return map[x][y];
 	}
-
-	private boolean moveUnit(SimpleUnit unit, int newX, int newY, UnitType type) {
+	
+	public boolean moveUnit(SimpleUnit unit, int newX, int newY) {
+		if(unit == null)
+			return false;
+		
 		int prevX = unit.getX();
 		int prevY = unit.getY();
 
@@ -89,7 +91,7 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 			{
 				if (map[newX][newY] == null) 
 				{
-					if (putUnit(unit, newX, newY, type))
+					if (putUnit(unit, newX, newY))
 					{
 						map[prevX][prevY] = null;
 						return true;
@@ -100,7 +102,7 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 		return false;
 	}
 
-	private void removeUnit(int x, int y) {
+	public void removeUnit(int x, int y) {
 		SimpleUnit unitToRemove = this.getUnit(x, y);
 
 		if (unitToRemove == null)
@@ -111,20 +113,23 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 	}
 	
 	public void onMessageReceived(Message msg) {
-		Message reply = new Message();
+		if((int)msg.get("unitID")>20)
+			System.out.println("battle "+msg);
 		MessageRequest request = (MessageRequest)msg.get("request");
 		SimpleUnit unit;
-		
 		switch(request)
 		{
 			case spawnUnit:
-				this.spawnUnit((SimpleUnit)msg.get("unit"), (Integer)msg.get("x"), (Integer)msg.get("y"), (UnitType)msg.get("type"));
+				this.spawnUnit((SimpleUnit)msg.get("unit"), (Integer)msg.get("x"), (Integer)msg.get("y"));
 				break;
 			case putUnit:
-				this.putUnit((SimpleUnit)msg.get("unit"), (Integer)msg.get("x"), (Integer)msg.get("y"), (UnitType)msg.get("type"));
+				this.putUnit((SimpleUnit)msg.get("unit"), (Integer)msg.get("x"), (Integer)msg.get("y"));
 				break;
 			case getUnit:
 			{
+				Message reply = new Message();
+				reply.put("unitID", msg.get("unitID"));
+				reply.put("unit", msg.get("unit"));
 				int x = (Integer)msg.get("x");
 				int y = (Integer)msg.get("y");
 				/* Copy the id of the message so that the unit knows 
@@ -133,10 +138,14 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 				reply.put("id", msg.get("id"));
 				// Get the unit at the specific location
 				reply.put("unit", getUnit(x, y));
+				sendServerMessage(reply);
 				break;
 			}
 			case getType:
 			{
+				Message reply = new Message();
+				reply.put("unitID", msg.get("unitID"));
+				reply.put("unit", msg.get("unit"));
 				int x = (Integer)msg.get("x");
 				int y = (Integer)msg.get("y");
 				/* Copy the id of the message so that the unit knows 
@@ -155,6 +164,7 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 				{
 					reply.put("type", UnitType.undefined);
 				}
+				sendServerMessage(reply);
 				break;
 			}
 			case dealDamage:
@@ -180,16 +190,21 @@ public class SimpleBattleField extends UnicastRemoteObject implements SimpleBatt
 				break;
 			}
 			case moveUnit:
-				reply = new Message();
-				this.moveUnit((SimpleUnit) msg.get("unit"), (Integer)msg.get("x"), (Integer)msg.get("y"), (UnitType)msg.get("type"));
+			{
+				Message reply = new Message();
+				reply.put("unitID", msg.get("unitID"));
+				reply.put("unit", msg.get("unit"));
+				this.moveUnit((SimpleUnit) msg.get("unit"), (Integer)msg.get("x"), (Integer)msg.get("y"));
 				reply.put("id", msg.get("id"));
+				sendServerMessage(reply);
 				break;
+			}
 			case removeUnit:
+			{
 				this.removeUnit((Integer)msg.get("x"), (Integer)msg.get("y"));
 				break;
+			}
 		}
-		if (reply != null)
-			sendServerMessage(reply);
 	}
 	
 	private void sendServerMessage(Message message) {

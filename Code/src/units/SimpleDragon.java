@@ -48,8 +48,9 @@ public class SimpleDragon extends SimpleUnit implements Runnable, Serializable {
 
 		/* Create a random delay */
 		timeBetweenTurns = (int)(Math.random() * (MAX_TIME_BETWEEN_TURNS - MIN_TIME_BETWEEN_TURNS)) + MIN_TIME_BETWEEN_TURNS;
+
 		
-		if (!spawn(x, y, type))
+		if (!spawn(x, y))
 		{
 			return; // We could not spawn on the battlefield
 		}

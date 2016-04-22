@@ -11,7 +11,6 @@ import RMI.GameServerInterface;
 import RMI.Message;
 import RMI.MessageRequest;
 import game.GameState;
-import game.SimpleBattleField;
 import game.SimpleBattleFieldInterface;
 
 /**
@@ -82,7 +81,6 @@ public abstract class SimpleUnit implements Serializable {
 		this.y = y;
 		// Initialize the max health and health
 		hitPoints = maxHitPoints = maxHealth;
-
 
 		// Initialize the attack points
 		this.attackPoints = attackPoints;
@@ -189,7 +187,7 @@ public abstract class SimpleUnit implements Serializable {
 	 *            y-coordinate of the spawn location
 	 * @return true iff the unit could spawn at the location on the battlefield
 	 */
-	protected boolean spawn(int x, int y, UnitType type) {
+	protected boolean spawn(int x, int y) {
 		/*
 		 * Create a new message, notifying the board the unit has actually
 		 * spawned at the designated position.
@@ -199,13 +197,12 @@ public abstract class SimpleUnit implements Serializable {
 		spawnMessage.put("request", MessageRequest.spawnUnit);
 		spawnMessage.put("x", x);
 		spawnMessage.put("y", y);
-		spawnMessage.put("type", type);
 		spawnMessage.put("unit", this);
 		spawnMessage.put("id", id);
 		sendServerMessage(spawnMessage);
 
-		//getUnit(x, y);
-		
+		getUnit(x, y);
+
 		return true;
 	}
 
@@ -216,66 +213,102 @@ public abstract class SimpleUnit implements Serializable {
 		getMessage.put("x", x);
 		getMessage.put("y", y);
 		getMessage.put("id", id);
+		getMessage.put("unitID", this.getUnitID());
 		// Send the getUnit message
 		sendServerMessage(getMessage);
 
 		// Wait for the reply
 		while (!messageList.containsKey(id)) {
 			try {
-				System.out.println("id u: "+unitID);
-				System.out.println("getter u: "+getMessageList());
-				System.out.println("list loop u: "+messageList);
-				System.out.println("message id u: "+id);
-				runnerThread.wait(50);
-			} catch (InterruptedException e) {
+				//System.out.println("getunit");
+				//System.out.println(messageList);
+				updateMessageList(id);
+				Thread.sleep(50);
+			} catch (Exception e) {
 			}
 
 			// Quit if the game window has closed
 			if (!GameState.getRunningState())
 				return null;
 		}
+
+		//System.out.println(unitID + " " +id+" done");
 		result = messageList.get(id);
-		messageList.put(id, null);
-		
+		messageList.remove(id);
+		emptyMessageList(id);
 		return (SimpleUnit) result.get("unit");
 	}
 
 	private void sendServerMessage(Message message) {
 		message.put("serverRequest", MessageRequest.toBattleField);
+		message.put("unitID", this.getUnitID());
 		try {
+			if(unitID>20)
+				System.out.println("unit "+message);
 			gameServer.onMessageReceived(message);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 
-	protected void moveUnit(int x, int y, UnitType type) {
+	private void updateMessageList(int messageid) {
+		try {
+			Map<Integer, Message> unitMessageList = gameServer.getUnitMessages(unitID);
+			//System.out.println(unitID + " " + messageid + " unitMessageList1  " + unitMessageList);
+			if (unitMessageList != null) {
+				if (!unitMessageList.isEmpty()) {
+					//System.out.println(unitID + " " + messageid + " unitMessageList2  " + unitMessageList);
+					//System.out.println(unitID + " " + messageid + " message  " + (Message) unitMessageList.get(unitID));
+					Message msg = (Message) unitMessageList.get(messageid);
+					if (msg != null) {
+						//System.out.println(unitID + " " + messageid + " msg  " + msg);
+						if (this.getUnitID() == (int) msg.get("unitID")) {
+							messageList = unitMessageList;
+						}
+					}
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	private synchronized void emptyMessageList(int messageID) {
+		try {
+			gameServer.removeMessage(messageID, unitID);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	protected void moveUnit(int x, int y) {
 		Message moveMessage = new Message();
 		int id = localMessageCounter++;
 		moveMessage.put("request", MessageRequest.moveUnit);
 		moveMessage.put("x", x);
 		moveMessage.put("y", y);
-		moveMessage.put("type", type);
 		moveMessage.put("id", id);
-		moveMessage.put("unit", this);
+		moveMessage.put("unitID", this.getUnitID());
 		// Send the getUnit message
 		sendServerMessage(moveMessage);
 
 		// Wait for the reply
 		while (!messageList.containsKey(id)) {
 			try {
+				updateMessageList(id);
 				Thread.sleep(50);
-			} catch (InterruptedException e) {
+			} catch (Exception e) {
 			}
 
 			// Quit if the game window has closed
 			if (!GameState.getRunningState())
 				return;
 		}
-		
+
 		// Remove the result from the messageList
-		//setPosition(x, y);
-		messageList.put(id, null);
+		// setPosition(x, y);
+		messageList.remove(id);
+		emptyMessageList(id);
 	}
 
 	public void healDamage(int x, int y, int healed) {
@@ -295,7 +328,6 @@ public abstract class SimpleUnit implements Serializable {
 			healMessage.put("healed", healed);
 			healMessage.put("id", id);
 		}
-		
 		// Send a spawn message
 		sendServerMessage(healMessage);
 	}
@@ -329,13 +361,16 @@ public abstract class SimpleUnit implements Serializable {
 		getTypeMessage.put("x", x);
 		getTypeMessage.put("y", y);
 		getTypeMessage.put("id", id);
+		getTypeMessage.put("unitID", this.getUnitID());
 		sendServerMessage(getTypeMessage);
 
 		// Wait for the reply
 		while (!messageList.containsKey(id)) {
 			try {
 				Thread.sleep(50);
-			} catch (InterruptedException e) {
+				updateMessageList(id);
+			} catch (Exception e) {
+				e.printStackTrace();
 			}
 
 			// Quit if the game window has closed
@@ -343,15 +378,15 @@ public abstract class SimpleUnit implements Serializable {
 				return UnitType.undefined;
 		}
 
-		result = messageList.get(id);
+		result = messageList.get(unitID);
 		if (result == null) // Could happen if the game window had closed
 			return UnitType.undefined;
 		if (result.get("type") == null)
 			return UnitType.undefined;
-		
-		messageList.put(id, null);
-		return (UnitType) result.get("type");
 
+		messageList.remove(id);
+		emptyMessageList(id);
+		return (UnitType) result.get("type");
 	}
 
 	public void dealDamage(int x, int y, int damage) {
@@ -374,11 +409,6 @@ public abstract class SimpleUnit implements Serializable {
 		sendServerMessage(damageMessage);
 	}
 
-	public void onMessageReceived(Message message) {
-		messageList.put((Integer)message.get("id"), message);
-		System.out.println("onMessageReceived: "+messageList);
-	}
-	
 	// Disconnects the unit from the battlefield by exiting its run-state
 	public void disconnect() {
 		running = false;
@@ -402,5 +432,9 @@ public abstract class SimpleUnit implements Serializable {
 
 	public void setMessageList(Map<Integer, Message> messageList) {
 		this.messageList = messageList;
+	}
+
+	public void setUnitID(int unitID) {
+		this.unitID = unitID;
 	}
 }

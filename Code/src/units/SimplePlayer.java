@@ -48,11 +48,8 @@ public class SimplePlayer extends SimpleUnit implements Runnable, Serializable
 		timeBetweenTurns = (int)(Math.random() * (MAX_TIME_BETWEEN_TURNS - MIN_TIME_BETWEEN_TURNS)) + MIN_TIME_BETWEEN_TURNS;
 
 
-		if (!spawn(x, y, type))
+		if (!spawn(x, y))
 			return; // We could not spawn on the battlefield
-		
-		runnerThread = new Thread(this);
-		runnerThread.start();
 	}
 	
 
@@ -124,14 +121,16 @@ public class SimplePlayer extends SimpleUnit implements Runnable, Serializable
 						targetY = this.getY();
 						break;
 				}
+				System.out.println("before");
 				// Get what unit lies in the target square
-				adjacentUnitType = this.getType(targetX, targetY);
-				
+				adjacentUnitType = this.getType(targetX, targetY);	
+				System.out.println("after");
 				switch (adjacentUnitType) 
 				{
 					case undefined:
+						
 						// There is no unit in the square. Move the player to this square
-						this.moveUnit(targetX, targetY,type);
+						this.moveUnit(targetX, targetY);
 						break;
 					case player:
 						// There is a player in the square, attempt a healing

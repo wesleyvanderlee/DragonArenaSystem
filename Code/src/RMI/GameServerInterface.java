@@ -1,11 +1,14 @@
 package RMI;
+import java.io.Serializable;
 import java.rmi.Remote;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 import game.SimpleBattleField;
 import game.SimpleBattleFieldInterface;
 
-public interface GameServerInterface extends Remote{
+public interface GameServerInterface extends Remote, Serializable{
 	public boolean addClient(GameClient clientID) throws java.rmi.RemoteException;
 	public String getID() throws java.rmi.RemoteException;
 	public void initDragon(int x, int y) throws java.rmi.RemoteException;
@@ -22,4 +25,7 @@ public interface GameServerInterface extends Remote{
 	public void setHOST(String HOST) throws Exception;
 	public ArrayList<GameClient> getGameClients()throws Exception;
 	public void setGameClients(ArrayList<GameClient> gameClients)throws Exception;
+	public Map<Integer, Message> getUnitMessages(int unitID) throws Exception;
+	public void setUnitMessages(Map<Integer, Map<Integer, Message>> unitMessages)throws Exception;
+	public void removeMessage(int messageID, int unitID)  throws Exception;
 }

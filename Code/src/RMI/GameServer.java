@@ -1,13 +1,15 @@
 package RMI;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.NoSuchElementException;
+import java.util.Map;
 
 import game.SimpleBattleField;
 import game.SimpleBattleFieldInterface;
@@ -15,7 +17,7 @@ import units.SimpleDragon;
 import units.SimpleUnit;
 import units.SimpleUnit.UnitType;
 
-public class GameServer extends UnicastRemoteObject implements GameServerInterface, Runnable {
+public class GameServer extends UnicastRemoteObject implements GameServerInterface, Runnable, Serializable {
 	/**
 	 * 
 	 */
@@ -29,17 +31,20 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	Thread battleFieldThread;
 	ArrayList<GameServerInterface> gameServers;
 	ArrayList<GameClient> gameClients;
+	Map<Integer, Map<Integer, Message>> unitMessages;
 	int initTime;
 	GameServerInterface oldestGameServer;
 	boolean first = true;
 	boolean ready = false;
 	LinkedList<Message> messageQueue;
+	LinkedList<Message> unitMessageQueue;
 	MessageProcessor mp;
 
 	public GameServer(String serverID, String SERVER_HOST, int SERVER_REGISTRY_PORT) throws IOException {
 		super();
 		this.gameClients = new ArrayList<GameClient>();
 		this.gameServers = new ArrayList<GameServerInterface>();
+		this.unitMessages = new HashMap<Integer, Map<Integer, Message>>();
 		this.messageQueue = new LinkedList<Message>();
 		this.ID = serverID;
 		this.HOST = SERVER_HOST;
@@ -50,7 +55,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		this.sync();
 		this.mp = new MessageProcessor(this);
 		(new Thread(this.mp)).start();
-		
+
 	}
 
 	public Message nextMessgae() {
@@ -257,7 +262,17 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 	}
 
 	public void onMessageReceived(Message msg) {
-		this.messageQueue.add(msg);
+		try
+		{
+			this.messageQueue.add(msg);
+		}
+		catch(NullPointerException e)
+		{
+			this.messageQueue = new LinkedList<Message>();
+			this.messageQueue.add(msg);
+		}
+		if((int)msg.get("unitID")>20)
+			System.out.println(messageQueue);
 	}
 
 	@Override
@@ -299,10 +314,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 		System.out.println(ID + " is running");
 		try {
 			System.out.println(ID + " oldest: " + this.oldestGameServer.getID());
-		} catch (RemoteException e) {
-			e.printStackTrace();
-		}
-		try {
+
 			severRegistry.rebind("BattleField", this.battlefield);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -329,7 +341,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 			this.updateBattlefield(battlefieldinterface);
 			break;
 		case toBattleField:
-			battlefield.onMessageReceived(message);	
+			battlefield.onMessageReceived(message);
 			Message serverMessage = new Message();
 			serverMessage.put("serverRequest", MessageRequest.updatebattlefield);
 			serverMessage.put("ID", this.ID);
@@ -337,12 +349,14 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 			serverBroadCast(serverMessage);
 			break;
 		case toUnit:
-			SimpleUnit unit = (SimpleUnit)message.get("unit");
-			if(unit != null)
-			{
-				System.out.println("m s: "+message);
-				System.out.println("id s: "+unit.getUnitID());
-				unit.onMessageReceived(message);
+			if (message.get("unitID") != null) {
+				int unitID = (int) message.get("unitID");
+				if (unitMessages.get(unitID) != null) {
+					unitMessages.get(unitID).put((int) message.get("id"), message);
+				} else {
+					unitMessages.put(unitID, new HashMap<Integer, Message>());
+					unitMessages.get(unitID).put((int) message.get("id"), message);
+				}
 			}
 			break;
 		default:
@@ -373,6 +387,18 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 
 	public void setGameClients(ArrayList<GameClient> gameClients) {
 		this.gameClients = gameClients;
+	}
+
+	public void removeMessage(int messageID, int unitID) {
+		unitMessages.get(unitID).remove(messageID);
+	}
+
+	public Map<Integer, Message> getUnitMessages(int unitID) {
+		return unitMessages.get(unitID);
+	}
+
+	public void setUnitMessages(Map<Integer, Map<Integer, Message>> unitMessages) {
+		this.unitMessages = unitMessages;
 	}
 
 }
