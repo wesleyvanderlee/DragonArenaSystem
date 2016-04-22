@@ -8,10 +8,7 @@ import java.awt.Graphics;
 import java.awt.Image;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
-import java.io.IOException;
-import java.rmi.AccessException;
-import java.rmi.NotBoundException;
-import java.rmi.RemoteException;
+import java.rmi.ConnectException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 
@@ -20,7 +17,6 @@ import javax.swing.JPanel;
 import RMI.GameServerInterface;
 import game.BattleField;
 import game.GameState;
-import game.SimpleBattleField;
 import game.SimpleBattleFieldInterface;
 import units.SimpleDragon;
 import units.SimplePlayer;
@@ -174,8 +170,12 @@ public class BattleFieldViewer extends JPanel implements Runnable {
 				Thread.sleep((int)(1000 * GameState.GAME_SPEED));
 				invalidate();
 				repaint();
-			} catch (Exception e) {
-				e.printStackTrace();
+			} catch (ConnectException e) {
+				System.out.println("Disconnected");
+				System.exit(0);
+			}
+			 catch (Exception e) {
+					e.printStackTrace();
 			}
 		}
 	}

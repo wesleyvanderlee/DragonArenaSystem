@@ -138,6 +138,7 @@ public class GameServer extends UnicastRemoteObject implements GameServerInterfa
 			this.battlefield.setMap(bf.getMap());
 			this.battlefield.setUnits(bf.getUnits());
 		} catch (Exception e) {
+			System.out.println("[][][]here");
 			e.printStackTrace();
 		}
 

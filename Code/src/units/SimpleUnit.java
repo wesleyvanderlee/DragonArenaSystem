@@ -251,7 +251,7 @@ public abstract class SimpleUnit implements Serializable, IMessageReceivedHandle
 				messageList.put((Integer) message.get("id"), reply);
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
+//			e.printStackTrace();
 		}
 
 	}
